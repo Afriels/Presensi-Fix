@@ -171,26 +171,21 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, onClose }) => {
             <style>
                 {`
                 @media print {
-                  body > *:not(.printable-area-container) {
-                    display: none;
+                  body * {
+                    visibility: hidden;
                   }
-                  .printable-area-container {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100vw;
-                    height: 100vh;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    background-color: white !important;
-                    z-index: 9999;
+                  .printable-card, .printable-card * {
+                    visibility: visible;
                   }
                   .printable-card {
-                      transform: scale(1.5); /* Make it bigger for printing */
-                  }
-                  .no-print {
-                    display: none !important;
+                    position: fixed;
+                    left: 50%;
+                    top: 50%;
+                    transform: translate(-50%, -50%);
+                    box-shadow: none !important;
+                    border: 1px solid #333 !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
                   }
                 }
                 `}

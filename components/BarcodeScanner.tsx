@@ -1,10 +1,10 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { Student, AttendanceRecord, AttendanceStatus, AppSettings, Class } from '../types';
 import { getTodayDateString, getCurrentTimeString } from '../services/dataService';
 import Card from './ui/Card';
 import { SOUNDS } from '../constants';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 type ScanStatus = 'idle' | 'success' | 'error' | 'warning';
 interface ScanResult {
@@ -18,6 +18,7 @@ interface ScanResult {
 const BarcodeScanner: React.FC = () => {
   const [studentId, setStudentId] = useState('');
   const [scanResult, setScanResult] = useState<ScanResult>({ status: 'idle', message: 'Pindai barcode kartu siswa Anda.' });
+  const [isScannerVisible, setIsScannerVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [students] = useLocalStorage<Student[]>('students', []);
@@ -72,6 +73,39 @@ const BarcodeScanner: React.FC = () => {
     playSound(SOUNDS.SUCCESS);
 
   }, [students, attendance, settings.lateTime, setAttendance, classes]);
+  
+  useEffect(() => {
+    if (!isScannerVisible) return;
+
+    const scanner = new Html5QrcodeScanner(
+        "reader",
+        {
+            qrbox: { width: 250, height: 250 },
+            fps: 5,
+        },
+        false
+    );
+
+    let isScanning = true;
+
+    const onScanSuccess = (decodedText: string) => {
+        if (isScanning) {
+            isScanning = false;
+            handleScan(decodedText);
+            scanner.clear().catch(error => console.error("Failed to clear scanner", error));
+            setIsScannerVisible(false);
+        }
+    };
+
+    const onScanFailure = (error: any) => { /* ignore */ };
+
+    scanner.render(onScanSuccess, onScanFailure);
+
+    return () => {
+        scanner.clear().catch(error => console.error("Failed to clear scanner on cleanup", error));
+    };
+  }, [isScannerVisible, handleScan]);
+
 
   useEffect(() => {
     if (scanResult.status !== 'idle') {
@@ -102,21 +136,43 @@ const BarcodeScanner: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-full">
+    <div className="flex flex-col items-center h-full">
       <Card className="w-full max-w-4xl text-center">
         <h1 className="text-3xl font-bold text-gray-800 mb-4">Absensi Barcode</h1>
-        <p className="text-gray-600 mb-6">Arahkan pemindai barcode ke kartu siswa. Input akan diproses secara otomatis.</p>
-        <form onSubmit={handleSubmit}>
-          <input
-            ref={inputRef}
-            type="text"
-            value={studentId}
-            onChange={(e) => setStudentId(e.target.value)}
-            className="w-full px-4 py-3 text-2xl border-2 border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
-            placeholder="Menunggu ID Siswa..."
-            autoFocus
-          />
-        </form>
+        
+        {isScannerVisible ? (
+            <div>
+                <div id="reader" className="w-full max-w-sm mx-auto rounded-lg overflow-hidden border-2 border-gray-200"></div>
+                <button
+                    onClick={() => setIsScannerVisible(false)}
+                    className="mt-4 px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+                >
+                    Tutup Kamera
+                </button>
+            </div>
+        ) : (
+            <div>
+                <p className="text-gray-600 mb-6">Letakkan kartu di depan kamera atau ketik NIS secara manual.</p>
+                <form onSubmit={handleSubmit} className="mb-4">
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        value={studentId}
+                        onChange={(e) => setStudentId(e.target.value)}
+                        className="w-full px-4 py-3 text-2xl border-2 border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
+                        placeholder="Ketik NIS..."
+                        autoFocus
+                    />
+                </form>
+                <button
+                    onClick={() => setIsScannerVisible(true)}
+                    className="px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition flex items-center justify-center w-full sm:w-auto mx-auto shadow-md"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-5 w-5"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+                    Pindai dengan Kamera
+                </button>
+            </div>
+        )}
       </Card>
       
       <Card className={`w-full max-w-4xl mt-6 transition-all duration-300 ${resultColors[scanResult.status]}`}>
