@@ -10,12 +10,14 @@ const Settings: React.FC = () => {
 
     return (
         <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">Pengaturan</h1>
-            <div className="flex border-b mb-6">
-                <TabButton name="Jam Sekolah" tab="jam" activeTab={activeTab} setActiveTab={setActiveTab} />
-                <TabButton name="Manajemen Kelas" tab="kelas" activeTab={activeTab} setActiveTab={setActiveTab} />
-                <TabButton name="Tahun Pelajaran" tab="akademik" activeTab={activeTab} setActiveTab={setActiveTab} />
-                <TabButton name="Sistem" tab="sistem" activeTab={activeTab} setActiveTab={setActiveTab} />
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">Pengaturan</h1>
+            <div className="border-b mb-6">
+                <div className="flex items-center overflow-x-auto whitespace-nowrap">
+                    <TabButton name="Jam Sekolah" tab="jam" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabButton name="Manajemen Kelas" tab="kelas" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabButton name="Tahun Pelajaran" tab="akademik" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabButton name="Sistem" tab="sistem" activeTab={activeTab} setActiveTab={setActiveTab} />
+                </div>
             </div>
             <div>
                 {activeTab === 'jam' && <TimeSettings />}
@@ -30,7 +32,7 @@ const Settings: React.FC = () => {
 const TabButton: React.FC<{ name: string; tab: Tab; activeTab: Tab; setActiveTab: (tab: Tab) => void }> = ({ name, tab, activeTab, setActiveTab }) => (
     <button
         onClick={() => setActiveTab(tab)}
-        className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+        className={`px-4 py-2 text-sm font-medium transition-colors duration-200 flex-shrink-0 ${
             activeTab === tab
                 ? 'border-b-2 border-primary-500 text-primary-600'
                 : 'text-gray-500 hover:text-gray-700'

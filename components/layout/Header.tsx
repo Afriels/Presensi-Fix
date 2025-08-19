@@ -1,7 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onMenuClick: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -30,7 +33,16 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="h-20 bg-white border-b flex items-center justify-end px-6">
+    <header className="h-20 bg-white border-b flex items-center justify-between md:justify-end px-4 sm:px-6">
+       <button
+        onClick={onMenuClick}
+        className="text-gray-500 focus:outline-none md:hidden"
+        aria-label="Buka sidebar"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+      </button>
       <div className="text-right">
         <p className="text-sm font-semibold text-gray-700">{formatDate(currentTime)}</p>
         <p className="text-lg font-bold text-primary-700">{formatTime(currentTime)}</p>

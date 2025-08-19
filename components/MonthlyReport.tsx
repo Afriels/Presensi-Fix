@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { Student, Class, AttendanceRecord, AttendanceStatus } from '../types';
@@ -79,19 +78,19 @@ const MonthlyReport: React.FC = () => {
     return (
         <Card>
             <CardHeader>
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <CardTitle>Rekap Absensi Bulanan</CardTitle>
-                    <button onClick={exportToCSV} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition">
+                    <button onClick={exportToCSV} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition w-full sm:w-auto">
                         Export ke Excel
                     </button>
                 </div>
             </CardHeader>
-            <div className="flex items-center space-x-4 mb-4">
-                <div>
+            <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                <div className="flex-1">
                     <label htmlFor="month-filter" className="block text-sm font-medium text-gray-700">Bulan</label>
                     <input type="month" id="month-filter" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md" />
                 </div>
-                <div>
+                <div className="flex-1">
                     <label htmlFor="class-filter" className="block text-sm font-medium text-gray-700">Kelas</label>
                     <select id="class-filter" value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
                         <option value="all">Semua Kelas</option>

@@ -41,4 +41,6 @@ export const SOUNDS = {
     SUCCESS: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg',
     ERROR: 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg',
     WARNING: 'https://actions.google.com/sounds/v1/alerts/medium_bell.ogg',
+    CAMERA_OPEN: 'https://actions.google.com/sounds/v1/camera/camera_focus_beep.ogg',
+    CAMERA_CLOSE: 'https://actions.google.com/sounds/v1/ui/navigation_transition_left.ogg',
 };

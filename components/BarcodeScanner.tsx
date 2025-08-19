@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { Student, AttendanceRecord, AttendanceStatus, AppSettings, Class } from '../types';
@@ -81,7 +82,10 @@ const BarcodeScanner: React.FC = () => {
         "reader",
         {
             qrbox: { width: 250, height: 250 },
-            fps: 5,
+            fps: 10,
+            videoConstraints: {
+                facingMode: "environment" // Prioritaskan kamera belakang di mobile
+            }
         },
         false
     );
@@ -102,7 +106,10 @@ const BarcodeScanner: React.FC = () => {
     scanner.render(onScanSuccess, onScanFailure);
 
     return () => {
-        scanner.clear().catch(error => console.error("Failed to clear scanner on cleanup", error));
+        // Mencegah error jika komponen unmount sebelum scanner selesai
+        if (scanner && scanner.getState()) {
+            scanner.clear().catch(error => console.error("Failed to clear scanner on cleanup", error));
+        }
     };
   }, [isScannerVisible, handleScan]);
 
@@ -144,7 +151,10 @@ const BarcodeScanner: React.FC = () => {
             <div>
                 <div id="reader" className="w-full max-w-sm mx-auto rounded-lg overflow-hidden border-2 border-gray-200"></div>
                 <button
-                    onClick={() => setIsScannerVisible(false)}
+                    onClick={() => {
+                        playSound(SOUNDS.CAMERA_CLOSE);
+                        setIsScannerVisible(false);
+                    }}
                     className="mt-4 px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
                 >
                     Tutup Kamera
@@ -165,7 +175,10 @@ const BarcodeScanner: React.FC = () => {
                     />
                 </form>
                 <button
-                    onClick={() => setIsScannerVisible(true)}
+                    onClick={() => {
+                        playSound(SOUNDS.CAMERA_OPEN);
+                        setIsScannerVisible(true);
+                    }}
                     className="px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition flex items-center justify-center w-full sm:w-auto mx-auto shadow-md"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-5 w-5"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>

@@ -50,9 +50,9 @@ const StudentData: React.FC = () => {
     return (
         <Card>
             <CardHeader>
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <CardTitle>Data Siswa</CardTitle>
-                    <button onClick={() => openModal()} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition">
+                    <button onClick={() => openModal()} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition w-full sm:w-auto">
                         Tambah Siswa
                     </button>
                 </div>
@@ -81,9 +81,11 @@ const StudentData: React.FC = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classMap.get(student.classId)}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button onClick={() => openModal(student)} className="text-primary-600 hover:text-primary-900 mr-4">Edit</button>
-                                    <button onClick={() => setQrStudent(student)} className="text-green-600 hover:text-green-900 mr-4">QR Code</button>
-                                    <button onClick={() => handleDelete(student.id)} className="text-red-600 hover:text-red-900">Hapus</button>
+                                    <div className="flex justify-end items-center gap-4">
+                                        <button onClick={() => openModal(student)} className="text-primary-600 hover:text-primary-900">Edit</button>
+                                        <button onClick={() => setQrStudent(student)} className="text-green-600 hover:text-green-900">QR Code</button>
+                                        <button onClick={() => handleDelete(student.id)} className="text-red-600 hover:text-red-900">Hapus</button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
