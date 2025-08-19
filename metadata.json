@@ -1,0 +1,5 @@
+{
+  "name": "Aplikasi Absensi Siswa",
+  "description": "Aplikasi absensi berbasis web ini didesain agar siswa bisa mengabsen menggunakan kartu siswa yang sudah ada barcodenya. Memudahkan sekolah dalam melakukan presensi, mengecek kehadiran, dan rekapitulasi data.",
+  "requestFramePermissions": []
+}
