@@ -9,6 +9,7 @@ import MonthlyReport from './components/MonthlyReport';
 import ManualInput from './components/ManualInput';
 import StudentData from './components/StudentData';
 import Settings from './components/Settings';
+import UserGuide from './components/UserGuide';
 import { initializeDummyData } from './services/dataService';
 
 const App: React.FC = () => {
@@ -27,6 +28,7 @@ const App: React.FC = () => {
         <Route path="/input-manual" element={<ManualInput />} />
         <Route path="/data-siswa" element={<StudentData />} />
         <Route path="/pengaturan" element={<Settings />} />
+        <Route path="/petunjuk" element={<UserGuide />} />
       </Routes>
     </Layout>
   );

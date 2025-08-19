@@ -12,7 +12,6 @@ const MonthlyReport: React.FC = () => {
     const [classes] = useLocalStorage<Class[]>('classes', []);
     const [attendance] = useLocalStorage<AttendanceRecord[]>('attendance', []);
 
-    const studentMap = useMemo(() => new Map(students.map(s => [s.id, s])), [students]);
     const classMap = useMemo(() => new Map(classes.map(c => [c.id, c.name])), [classes]);
 
     const reportData = useMemo(() => {
@@ -38,15 +37,12 @@ const MonthlyReport: React.FC = () => {
                     summary[record.status]++;
                 }
             });
-
-            // Note: This simplified version doesn't calculate ALPA based on school days.
-            // A full implementation would need to know the number of school days in the month.
             
             return {
                 student,
                 summary
             };
-        });
+        }).sort((a, b) => a.student.name.localeCompare(b.student.name));
     }, [selectedMonth, selectedClass, students, attendance]);
     
     const exportToCSV = () => {
@@ -98,7 +94,9 @@ const MonthlyReport: React.FC = () => {
                     </select>
                 </div>
             </div>
-            <div className="overflow-x-auto">
+            
+            {/* Desktop Table View */}
+            <div className="overflow-x-auto hidden md:block">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
@@ -114,16 +112,46 @@ const MonthlyReport: React.FC = () => {
                             <tr key={student.id}>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                                    <div className="text-sm text-gray-500">NIS: {student.id}</div>
+                                    <div className="text-sm text-gray-500">NIS: {student.id} | {classMap.get(student.classId)}</div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-800">{summary[AttendanceStatus.HADIR]}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-800">{summary[AttendanceStatus.TERLAMBAT]}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-800">{summary[AttendanceStatus.SAKIT]}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-800">{summary[AttendanceStatus.IJIN]}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-green-600">{summary[AttendanceStatus.HADIR]}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-yellow-600">{summary[AttendanceStatus.TERLAMBAT]}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-orange-600">{summary[AttendanceStatus.SAKIT]}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-blue-600">{summary[AttendanceStatus.IJIN]}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+                {reportData.map(({ student, summary }) => (
+                    <div key={student.id} className="bg-white p-4 rounded-lg shadow">
+                         <div>
+                            <p className="font-bold text-gray-800">{student.name}</p>
+                            <p className="text-sm text-gray-500">NIS: {student.id} | {classMap.get(student.classId)}</p>
+                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-4 text-center border-t pt-4">
+                            <div>
+                                <p className="text-xs text-gray-500">Hadir</p>
+                                <p className="font-bold text-lg text-green-600">{summary[AttendanceStatus.HADIR]}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500">Terlambat</p>
+                                <p className="font-bold text-lg text-yellow-600">{summary[AttendanceStatus.TERLAMBAT]}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500">Sakit</p>
+                                <p className="font-bold text-lg text-orange-600">{summary[AttendanceStatus.SAKIT]}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500">Ijin</p>
+                                <p className="font-bold text-lg text-blue-600">{summary[AttendanceStatus.IJIN]}</p>
+                            </div>
+                        </div>
+                    </div>
+                ))}
             </div>
         </Card>
     );
