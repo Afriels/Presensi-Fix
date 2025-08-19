@@ -1,8 +1,8 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { Student, Class } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
+import QRCode from 'qrcode';
 
 const StudentData: React.FC = () => {
     const [students, setStudents] = useLocalStorage<Student[]>('students', []);
@@ -10,6 +10,8 @@ const StudentData: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+    const [qrStudent, setQrStudent] = useState<Student | null>(null);
+
 
     const classMap = useMemo(() => new Map(classes.map(c => [c.id, c.name])), [classes]);
 
@@ -80,6 +82,7 @@ const StudentData: React.FC = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classMap.get(student.classId)}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <button onClick={() => openModal(student)} className="text-primary-600 hover:text-primary-900 mr-4">Edit</button>
+                                    <button onClick={() => setQrStudent(student)} className="text-green-600 hover:text-green-900 mr-4">QR Code</button>
                                     <button onClick={() => handleDelete(student.id)} className="text-red-600 hover:text-red-900">Hapus</button>
                                 </td>
                             </tr>
@@ -88,6 +91,7 @@ const StudentData: React.FC = () => {
                 </table>
             </div>
             {isModalOpen && <StudentModal student={editingStudent} classes={classes} onSave={handleSave} onClose={closeModal} />}
+            {qrStudent && <QRCodeModal student={qrStudent} onClose={() => setQrStudent(null)} />}
         </Card>
     );
 };
@@ -143,5 +147,77 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, classes, onSave, o
         </div>
     );
 };
+
+interface QRCodeModalProps {
+    student: Student;
+    onClose: () => void;
+}
+
+const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, onClose }) => {
+    const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+
+    useEffect(() => {
+        QRCode.toDataURL(student.id, { width: 256, margin: 1, errorCorrectionLevel: 'H' })
+            .then(url => setQrCodeUrl(url))
+            .catch(err => console.error("Failed to generate QR code", err));
+    }, [student.id]);
+
+    const handlePrint = () => {
+        window.print();
+    };
+
+    return (
+        <>
+            <style>
+                {`
+                @media print {
+                  body > *:not(.printable-area-container) {
+                    display: none;
+                  }
+                  .printable-area-container {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    background-color: white !important;
+                    z-index: 9999;
+                  }
+                  .printable-card {
+                      transform: scale(1.5); /* Make it bigger for printing */
+                  }
+                  .no-print {
+                    display: none !important;
+                  }
+                }
+                `}
+            </style>
+            <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center printable-area-container">
+                <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
+                    <div className="printable-card bg-white p-4 border-2 border-gray-200 rounded-lg text-center font-sans">
+                        <h2 className="text-xl font-bold text-gray-800">KARTU TANDA SISWA</h2>
+                        <p className="text-sm text-gray-500 mb-4">SEKOLAH HARAPAN BANGSA</p>
+                        <img src={student.photoUrl} alt={student.name} className="w-32 h-32 rounded-full object-cover mx-auto border-4 border-primary-500 shadow-lg" />
+                        <h3 className="text-2xl font-semibold mt-4">{student.name}</h3>
+                        <p className="text-gray-600 text-lg">NIS: {student.id}</p>
+                        {qrCodeUrl ? (
+                             <img src={qrCodeUrl} alt="QR Code" className="mx-auto mt-4 w-48 h-48" />
+                        ) : (
+                            <div className="mx-auto mt-4 w-48 h-48 bg-gray-200 animate-pulse"></div>
+                        )}
+                    </div>
+                    <div className="flex justify-end space-x-2 pt-4 no-print">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Tutup</button>
+                        <button type="button" onClick={handlePrint} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Cetak</button>
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+};
+
 
 export default StudentData;
