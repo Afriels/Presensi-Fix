@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { Student, Class, AttendanceRecord, AttendanceStatus } from '../types';

@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 // Define the types for your database schema here.
@@ -24,6 +25,15 @@ export type Database = {
           class_id?: string;
           photo_url?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "students_class_id_fkey";
+            columns: ["class_id"];
+            isOneToOne: false;
+            referencedRelation: "classes";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       classes: {
         Row: {
@@ -37,6 +47,7 @@ export type Database = {
         Update: {
           name?: string;
         };
+        Relationships: [];
       };
     };
     Views: {
@@ -71,5 +82,4 @@ if (supabaseUrl.includes('vzcimsvyjzzqrlqlrpwp') || supabaseKey.includes('Ru69Z_
 }
 
 // Provide the Database type to the client for type-safety.
-// This will fix the errors in StudentData.tsx
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey);
