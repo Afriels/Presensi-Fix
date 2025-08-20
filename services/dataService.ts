@@ -1,5 +1,6 @@
 
-import { Student, Class, AttendanceRecord, AppSettings, AcademicYear, AttendanceStatus } from '../types';
+
+import type { Student, Class, AttendanceRecord, AppSettings, AcademicYear, AttendanceStatus } from '../types';
 
 export function getTodayDateString() {
     return new Date().toISOString().slice(0, 10);

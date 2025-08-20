@@ -28,8 +28,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, setIsSidebarOpen }) =>
         return;
       }
 
-      if (data && data.app_name) {
-        setAppName(data.app_name);
+      if (data && (data as any).app_name) {
+        setAppName((data as any).app_name);
       }
     };
     fetchSettings();

@@ -40,9 +40,9 @@ const Dashboard: React.FC = () => {
       const today = getTodayDateString();
 
       try {
-        const { data: studentsData, error: studentsError, count: totalStudents } = await supabase
+        const { count: totalStudents, error: studentsError } = await supabase
           .from('students')
-          .select('*', { count: 'exact' });
+          .select('*', { count: 'exact', head: true });
 
         if (studentsError) throw studentsError;
 
@@ -52,16 +52,18 @@ const Dashboard: React.FC = () => {
           .eq('date', today);
 
         if (attendanceError) throw attendanceError;
-
-        const present = (attendanceData || []).filter(a => a.status === AttendanceStatus.HADIR).length;
-        const late = (attendanceData || []).filter(a => a.status === AttendanceStatus.TERLAMBAT).length;
-        const sick = (attendanceData || []).filter(a => a.status === AttendanceStatus.SAKIT).length;
-        const permitted = (attendanceData || []).filter(a => a.status === AttendanceStatus.IJIN).length;
         
-        const attendedIds = new Set((attendanceData || []).map(a => a.student_id));
-        const notPresent = (totalStudents || 0) - attendedIds.size;
+        if (attendanceData) {
+            const present = attendanceData.filter(a => a.status === AttendanceStatus.HADIR).length;
+            const late = attendanceData.filter(a => a.status === AttendanceStatus.TERLAMBAT).length;
+            const sick = attendanceData.filter(a => a.status === AttendanceStatus.SAKIT).length;
+            const permitted = attendanceData.filter(a => a.status === AttendanceStatus.IJIN).length;
+            
+            const attendedIds = new Set(attendanceData.map(a => a.student_id));
+            const notPresent = (totalStudents || 0) - attendedIds.size;
 
-        setStats({ present, late, sick, permitted, notPresent });
+            setStats({ present, late, sick, permitted, notPresent });
+        }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {

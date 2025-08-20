@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AppSettings, Class, AcademicYear } from '../types';
+import type { AppSettings, Class, AcademicYear } from '../types';
 import Card from './ui/Card';
 import { PencilIcon, TrashIcon } from '../constants';
 import { supabase, Enums, Tables, TablesUpdate, TablesInsert } from '../services/supabase';
@@ -89,7 +89,7 @@ const IdentitySettings: React.FC = () => {
                 app_name: settings.appName,
                 school_name: settings.schoolName
             };
-            const { error } = await supabase.from('app_settings').update(settingsToUpdate).eq('id', 1);
+            const { error } = await supabase.from('app_settings').update(settingsToUpdate as any).eq('id', 1);
             if (error) throw error;
 
             setMessage('Pengaturan identitas berhasil disimpan!');
@@ -154,7 +154,7 @@ const TimeSettings: React.FC = () => {
                 late_time: settings.lateTime,
                 exit_time: settings.exitTime
             };
-            const { error } = await supabase.from('app_settings').update(settingsToUpdate).eq('id', 1);
+            const { error } = await supabase.from('app_settings').update(settingsToUpdate as any).eq('id', 1);
             if (error) throw error;
             setMessage('Pengaturan jam berhasil disimpan!');
             setTimeout(() => setMessage(''), 3000);
@@ -204,7 +204,7 @@ const ClassManagement: React.FC = () => {
         try {
             const { data, error } = await supabase.from('classes').select('*').order('name');
             if (error) throw error;
-            setClasses(data || []);
+            setClasses(data as Class[] || []);
         } catch (err: any) {
             setError('Gagal memuat data kelas: ' + err.message);
         } finally {
@@ -221,7 +221,7 @@ const ClassManagement: React.FC = () => {
         if (newClassName.trim()) {
             try {
                 const newClass: TablesInsert<'classes'> = { id: `cls-${Date.now()}`, name: newClassName.trim() };
-                const { data, error } = await supabase.from('classes').insert(newClass).select().single();
+                const { data, error } = await supabase.from('classes').insert(newClass as any).select().single();
                 if (error) throw error;
                 if (data) {
                     setClasses(prev => [...prev, data as Class].sort((a,b) => a.name.localeCompare(b.name)));
@@ -281,7 +281,7 @@ const AcademicYearManagement: React.FC = () => {
         if (error) {
             console.error("Error fetching academic years:", error);
         } else if (data) {
-            setYears(data.map(y => ({...y, semester: y.semester as 'Ganjil' | 'Genap'})));
+            setYears(data.map(y => ({...y, semester: y.semester as 'Ganjil' | 'Genap'} as AcademicYear)));
         }
         setLoading(false);
     }, []);
@@ -291,10 +291,10 @@ const AcademicYearManagement: React.FC = () => {
     const setActiveYear = async (id: number) => {
         try {
             // Set all to inactive
-            const { error: errorInactive } = await supabase.from('academic_years').update({ is_active: false }).eq('is_active', true);
+            const { error: errorInactive } = await supabase.from('academic_years').update({ is_active: false } as any).eq('is_active', true);
             if (errorInactive) throw errorInactive;
             // Set selected to active
-            const { error: errorActive } = await supabase.from('academic_years').update({ is_active: true }).eq('id', id);
+            const { error: errorActive } = await supabase.from('academic_years').update({ is_active: true } as any).eq('id', id);
             if(errorActive) throw errorActive;
             fetchYears();
         } catch (err: any) {
@@ -316,11 +316,11 @@ const AcademicYearManagement: React.FC = () => {
         try {
             if (editingYear) {
                 const yearToUpdate: TablesUpdate<'academic_years'> = { year: yearToSave.year, semester: yearToSave.semester };
-                const { error } = await supabase.from('academic_years').update(yearToUpdate).eq('id', editingYear.id);
+                const { error } = await supabase.from('academic_years').update(yearToUpdate as any).eq('id', editingYear.id);
                 if(error) throw error;
             } else {
                  const yearToInsert: TablesInsert<'academic_years'> = { year: yearToSave.year!, semester: yearToSave.semester!, is_active: years.length === 0 };
-                const { error } = await supabase.from('academic_years').insert(yearToInsert);
+                const { error } = await supabase.from('academic_years').insert(yearToInsert as any);
                 if(error) throw error;
             }
             fetchYears();
@@ -458,7 +458,7 @@ const UserManagement = () => {
             
             const usersMap = new Map(authUsersData.users.map(u => [u.id, u.email]));
             
-            const combinedUsers = profilesData.map(profile => ({
+            const combinedUsers = (profilesData as any[]).map(profile => ({
                 ...profile,
                 email: usersMap.get(profile.id) || 'N/A'
             }));
@@ -478,7 +478,7 @@ const UserManagement = () => {
 
     const handleRoleChange = async (userId: string, newRole: Enums<'user_role'>) => {
         try {
-            const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+            const { error } = await supabase.from('profiles').update({ role: newRole } as any).eq('id', userId);
             if (error) throw error;
             setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
         } catch(err: any) {

@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { supabase, Enums, Tables } from '../../services/supabase';
-import { Session, User } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
 import { Navigate, useLocation } from 'react-router-dom';
 
 type UserProfile = Tables<'profiles'>;
@@ -26,13 +26,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const logoutTimer = useRef<number | undefined>();
 
     const signOut = useCallback(async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-            console.error('Error signing out:', error.message);
-        } else {
-            setUser(null);
-            setSession(null);
-        }
+        await supabase.auth.signOut();
+        // The onAuthStateChange listener will handle clearing the state.
     }, []);
 
     const resetLogoutTimer = useCallback(() => {
@@ -45,37 +40,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }, 10 * 60 * 1000); // 10 minutes
     }, [signOut]);
 
+    // This effect runs once on mount to check the initial session state,
+    // which is crucial for handling page refreshes.
     useEffect(() => {
-        const { data: authListener } = supabase.auth.onAuthStateChange(
-            async (_event, session) => {
-                try {
-                    setSession(session);
-                    if (session?.user) {
-                        const { data: profile, error } = await supabase
-                            .from('profiles')
-                            .select('role')
-                            .eq('id', session.user.id)
-                            .single();
-                        
-                        if (error) {
-                            console.error("Error fetching profile:", error);
-                        }
+        const checkInitialSession = async () => {
+            try {
+                const { data: { session: initialSession } } = await supabase.auth.getSession();
+                
+                if (initialSession?.user) {
+                    const { data: profile, error } = await supabase
+                        .from('profiles')
+                        .select('role')
+                        .eq('id', initialSession.user.id)
+                        .single();
 
-                        setUser({ ...session.user, role: profile?.role || 'siswa' });
-                    } else {
-                        setUser(null);
+                    if (error) throw error; // Let the catch block handle it.
+                    
+                    const authUser: AuthUser = { ...initialSession.user, role: (profile as UserProfile)?.role || 'siswa' };
+                    setSession(initialSession);
+                    setUser(authUser);
+                } else {
+                    setSession(null);
+                    setUser(null);
+                }
+            } catch (error) {
+                console.error("Failed to check initial session or fetch profile:", error);
+                setSession(null);
+                setUser(null);
+            } finally {
+                // This is the most critical part: guarantee that loading is set to false.
+                setLoading(false);
+            }
+        };
+
+        checkInitialSession();
+
+        // This listener handles subsequent auth events like SIGN_IN, SIGN_OUT.
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            async (_event, newSession) => {
+                if (newSession?.user) {
+                     const { data: profile, error } = await supabase
+                        .from('profiles')
+                        .select('role')
+                        .eq('id', newSession.user.id)
+                        .single();
+                    
+                    if (error) {
+                        console.error("Error fetching profile on auth state change", error);
+                        // Log user in with default role if profile fetch fails
+                        const authUser: AuthUser = { ...newSession.user, role: 'siswa' };
+                        setSession(newSession);
+                        setUser(authUser);
+                        return;
                     }
-                } catch (e) {
-                    console.error("Error fetching profile during auth state change", e);
-                    setUser(null); // Ensure user is cleared if profile fetch fails
-                } finally {
-                    setLoading(false);
+
+                    const authUser: AuthUser = { ...newSession.user, role: (profile as UserProfile)?.role || 'siswa' };
+                    setSession(newSession);
+                    setUser(authUser);
+                } else {
+                    // This handles logout.
+                    setSession(null);
+                    setUser(null);
                 }
             }
         );
 
         return () => {
-            authListener?.subscription.unsubscribe();
+            subscription?.unsubscribe();
         };
     }, []);
 

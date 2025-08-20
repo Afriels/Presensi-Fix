@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Student, AttendanceStatus, AppSettings, Class } from '../types';
+import type { Student, AttendanceStatus, AppSettings, Class } from '../types';
 import { getTodayDateString, getCurrentTimeString } from '../services/dataService';
 import Card from './ui/Card';
 import { SOUNDS } from '../constants';
@@ -27,25 +27,24 @@ const BarcodeScanner: React.FC = () => {
 
   useEffect(() => {
     const fetchInitialData = async () => {
-        const settingsPromise = supabase.from('app_settings').select('*').eq('id', 1).single();
-        const classesPromise = supabase.from('classes').select('*');
+        const { data: settingsData, error: settingsError } = await supabase.from('app_settings').select('*').eq('id', 1).single();
 
-        const [settingsResult, classesResult] = await Promise.all([settingsPromise, classesPromise]);
-
-        if (settingsResult.error) {
-            console.error("Error fetching app settings:", settingsResult.error);
-        } else if (settingsResult.data) {
+        if (settingsError) {
+            console.error("Error fetching app settings:", settingsError);
+        } else if (settingsData) {
             setSettings({
-                entryTime: settingsResult.data.entry_time,
-                lateTime: settingsResult.data.late_time,
-                exitTime: settingsResult.data.exit_time,
+                entryTime: settingsData.entry_time,
+                lateTime: settingsData.late_time,
+                exitTime: settingsData.exit_time,
             });
         }
         
-        if (classesResult.error) {
-            console.error("Error fetching classes:", classesResult.error);
-        } else if (classesResult.data) {
-            setClasses(classesResult.data);
+        const { data: classesData, error: classesError } = await supabase.from('classes').select('*');
+        
+        if (classesError) {
+            console.error("Error fetching classes:", classesError);
+        } else if (classesData) {
+            setClasses(classesData as Class[]);
         }
     };
     fetchInitialData();
@@ -114,7 +113,7 @@ const BarcodeScanner: React.FC = () => {
             status: status,
         };
         
-        const { error: insertError } = await supabase.from('attendance_records').insert(newRecord);
+        const { error: insertError } = await supabase.from('attendance_records').insert(newRecord as any);
         if (insertError) throw insertError;
         
         setScanResult({ status: 'success', message: `Absensi berhasil: ${status}`, student, class: studentClass, time: currentTime });
