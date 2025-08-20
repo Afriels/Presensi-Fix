@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import type { Student, AttendanceStatus, AppSettings, Class } from '../types';
+import { Student, AttendanceStatus, AppSettings, Class } from '../types';
 import { getTodayDateString, getCurrentTimeString } from '../services/dataService';
 import Card from './ui/Card';
 import { SOUNDS } from '../constants';
@@ -27,7 +27,7 @@ const BarcodeScanner: React.FC = () => {
 
   useEffect(() => {
     const fetchInitialData = async () => {
-        const { data: settingsData, error: settingsError } = await supabase.from('app_settings').select('*').eq('id', 1).single();
+        const { data: settingsData, error: settingsError } = await supabase.from('app_settings').select('entry_time, late_time, exit_time').eq('id', 1).single();
 
         if (settingsError) {
             console.error("Error fetching app settings:", settingsError);
@@ -44,7 +44,7 @@ const BarcodeScanner: React.FC = () => {
         if (classesError) {
             console.error("Error fetching classes:", classesError);
         } else if (classesData) {
-            setClasses(classesData as Class[]);
+            setClasses(classesData);
         }
     };
     fetchInitialData();
@@ -113,7 +113,7 @@ const BarcodeScanner: React.FC = () => {
             status: status,
         };
         
-        const { error: insertError } = await supabase.from('attendance_records').insert(newRecord as any);
+        const { error: insertError } = await supabase.from('attendance_records').insert(newRecord);
         if (insertError) throw insertError;
         
         setScanResult({ status: 'success', message: `Absensi berhasil: ${status}`, student, class: studentClass, time: currentTime });

@@ -54,7 +54,7 @@ export type Database = {
           date: string;
           check_in: string | null;
           check_out: string | null;
-          status: Database["public"]["Enums"]["attendance_status"];
+          status: 'Hadir' | 'Terlambat' | 'Sakit' | 'Ijin' | 'Alpa';
           notes: string | null;
           created_at: string;
         };
@@ -64,7 +64,7 @@ export type Database = {
           date: string;
           check_in?: string | null;
           check_out?: string | null;
-          status: Database["public"]["Enums"]["attendance_status"];
+          status: 'Hadir' | 'Terlambat' | 'Sakit' | 'Ijin' | 'Alpa';
           notes?: string | null;
         };
         Update: {
@@ -72,7 +72,7 @@ export type Database = {
           date?: string;
           check_in?: string | null;
           check_out?: string | null;
-          status?: Database["public"]["Enums"]["attendance_status"];
+          status?: 'Hadir' | 'Terlambat' | 'Sakit' | 'Ijin' | 'Alpa';
           notes?: string | null;
         };
         Relationships: [];
@@ -128,15 +128,15 @@ export type Database = {
       profiles: {
         Row: {
           id: string;
-          role: Database['public']['Enums']['user_role'];
+          role: 'admin' | 'guru' | 'siswa';
         };
         Insert: {
           id: string;
-          role?: Database['public']['Enums']['user_role'];
+          role?: 'admin' | 'guru' | 'siswa';
         };
         Update: {
           id?: string;
-          role?: Database['public']['Enums']['user_role'];
+          role?: 'admin' | 'guru' | 'siswa';
         };
         Relationships: [];
       };

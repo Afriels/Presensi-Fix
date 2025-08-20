@@ -31,7 +31,7 @@ const StudentData: React.FC = () => {
             if (studentsRes.error) throw studentsRes.error;
             if (classesRes.error) throw classesRes.error;
 
-            const appStudents: Student[] = (studentsRes.data as any[] || []).map(dbStudent => ({
+            const appStudents: Student[] = (studentsRes.data || []).map(dbStudent => ({
                 id: dbStudent.id,
                 name: dbStudent.name,
                 classId: dbStudent.class_id,
@@ -39,7 +39,7 @@ const StudentData: React.FC = () => {
             }));
             
             setStudents(appStudents);
-            setClasses(classesRes.data as Class[] || []);
+            setClasses(classesRes.data || []);
         } catch (err: any) {
             setError('Gagal memuat data: ' + err.message);
             console.error(err);
@@ -75,7 +75,7 @@ const StudentData: React.FC = () => {
                 const studentToUpdate: TablesUpdate<'students'> = { name: student.name, class_id: student.classId };
                 const { error } = await supabase
                     .from('students')
-                    .update(studentToUpdate as any)
+                    .update(studentToUpdate)
                     .eq('id', student.id);
                 if (error) throw error;
             } else { // Insert
@@ -88,7 +88,7 @@ const StudentData: React.FC = () => {
                 
                 const { error } = await supabase
                     .from('students')
-                    .insert(newStudentData as any);
+                    .insert(newStudentData);
                 if (error) throw error;
             }
             fetchData(); // Refresh data
@@ -252,8 +252,8 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, onClose }) => {
                 console.error("Error fetching school name:", error);
                 return;
             }
-            if(data && (data as any).school_name) {
-                setSchoolName((data as any).school_name);
+            if(data && data.school_name) {
+                setSchoolName(data.school_name);
             }
         };
         fetchSchoolName();

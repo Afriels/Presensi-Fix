@@ -23,13 +23,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, setIsSidebarOpen }) =>
         .eq('id', 1)
         .single();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') { // PGRST116: no rows found, which is ok on first run
         console.error('Error fetching app settings:', error);
-        return;
       }
 
-      if (data && (data as any).app_name) {
-        setAppName((data as any).app_name);
+      if (data && data.app_name) {
+        setAppName(data.app_name);
       }
     };
     fetchSettings();

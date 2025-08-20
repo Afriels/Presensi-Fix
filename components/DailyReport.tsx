@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import type { Student, Class, AttendanceRecord, AttendanceStatus } from '../types';
+import { Student, Class, AttendanceRecord, AttendanceStatus } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
 import { getTodayDateString, getCurrentTimeString } from '../services/dataService';
 import { PlusIcon, PencilIcon, TrashIcon } from '../constants';
@@ -33,9 +33,9 @@ const DailyReport: React.FC = () => {
       if (classesRes.error) throw classesRes.error;
       if (attendanceRes.error) throw attendanceRes.error;
 
-      setStudents((studentsRes.data as any[] || []).map(s => ({ id: s.id, name: s.name, classId: s.class_id, photoUrl: s.photo_url || '' })));
-      setClasses((classesRes.data as any[]) || []);
-      setAttendance((attendanceRes.data as any[] || []).map(a => ({
+      setStudents((studentsRes.data || []).map(s => ({ id: s.id, name: s.name, classId: s.class_id, photoUrl: s.photo_url || '' })));
+      setClasses(classesRes.data || []);
+      setAttendance((attendanceRes.data || []).map(a => ({
         id: a.id, studentId: a.student_id, date: a.date, checkIn: a.check_in, checkOut: a.check_out, status: a.status as AttendanceStatus, notes: a.notes || undefined
       })));
 
@@ -99,7 +99,7 @@ const DailyReport: React.FC = () => {
           check_in: recordToSave.checkIn,
           notes: recordToSave.notes
         };
-        const { error } = await supabase.from('attendance_records').update(recordToUpdate as any).eq('id', recordToSave.id);
+        const { error } = await supabase.from('attendance_records').update(recordToUpdate).eq('id', recordToSave.id);
         if (error) throw error;
       } else { // Insert
         const recordToInsert: TablesInsert<'attendance_records'> = {
@@ -109,7 +109,7 @@ const DailyReport: React.FC = () => {
           check_in: recordToSave.checkIn,
           notes: recordToSave.notes
         };
-        const { error } = await supabase.from('attendance_records').insert(recordToInsert as any);
+        const { error } = await supabase.from('attendance_records').insert(recordToInsert);
         if (error) throw error;
       }
       fetchData(); // Refresh data

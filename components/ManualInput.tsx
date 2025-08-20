@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { Student, AttendanceRecord, AttendanceStatus } from '../types';
+import { Student, AttendanceRecord, AttendanceStatus } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
 import { getTodayDateString } from '../services/dataService';
 import { supabase, TablesInsert } from '../services/supabase';
@@ -20,7 +20,7 @@ const ManualInput: React.FC = () => {
                 return;
             }
             if (data) {
-                setStudents(data.map(s => ({...s, classId: '', photoUrl: ''} as Student)));
+                setStudents(data.map(s => ({...s, classId: '', photoUrl: ''})));
             }
         };
         fetchStudents();
@@ -62,7 +62,7 @@ const ManualInput: React.FC = () => {
 
             const payload = existingRecord ? { ...recordToUpsert, id: existingRecord.id } : recordToUpsert;
 
-            const { error: upsertError } = await supabase.from('attendance_records').upsert(payload as any);
+            const { error: upsertError } = await supabase.from('attendance_records').upsert(payload);
 
             if (upsertError) throw upsertError;
             

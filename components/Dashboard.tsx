@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { AttendanceStatus } from '../types';
 import Card, { CardTitle } from './ui/Card';
@@ -62,7 +62,9 @@ const Dashboard: React.FC = () => {
             const attendedIds = new Set(attendanceData.map(a => a.student_id));
             const notPresent = (totalStudents || 0) - attendedIds.size;
 
-            setStats({ present, late, sick, permitted, notPresent });
+            setStats({ present, late, sick, permitted, notPresent: Math.max(0, notPresent) });
+        } else {
+            setStats({ present: 0, late: 0, sick: 0, permitted: 0, notPresent: totalStudents || 0 });
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);

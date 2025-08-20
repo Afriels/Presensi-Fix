@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, useRef, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { supabase, Enums, Tables } from '../../services/supabase';
 import type { Session, User } from '@supabase/supabase-js';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -25,12 +25,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
     const logoutTimer = useRef<number | undefined>();
 
-    const signOut = useCallback(async () => {
+    const signOut = async () => {
         await supabase.auth.signOut();
-        // The onAuthStateChange listener will handle clearing the state.
-    }, []);
+    };
 
-    const resetLogoutTimer = useCallback(() => {
+    const resetLogoutTimer = () => {
         if (logoutTimer.current) {
             clearTimeout(logoutTimer.current);
         }
@@ -38,70 +37,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log("Auto-logging out due to inactivity.");
             signOut();
         }, 10 * 60 * 1000); // 10 minutes
-    }, [signOut]);
+    };
 
-    // This effect runs once on mount to check the initial session state,
-    // which is crucial for handling page refreshes.
     useEffect(() => {
-        const checkInitialSession = async () => {
-            try {
-                const { data: { session: initialSession } } = await supabase.auth.getSession();
-                
-                if (initialSession?.user) {
-                    const { data: profile, error } = await supabase
-                        .from('profiles')
-                        .select('role')
-                        .eq('id', initialSession.user.id)
-                        .single();
-
-                    if (error) throw error; // Let the catch block handle it.
-                    
-                    const authUser: AuthUser = { ...initialSession.user, role: (profile as UserProfile)?.role || 'siswa' };
-                    setSession(initialSession);
-                    setUser(authUser);
-                } else {
-                    setSession(null);
-                    setUser(null);
-                }
-            } catch (error) {
-                console.error("Failed to check initial session or fetch profile:", error);
-                setSession(null);
-                setUser(null);
-            } finally {
-                // This is the most critical part: guarantee that loading is set to false.
-                setLoading(false);
-            }
-        };
-
-        checkInitialSession();
-
-        // This listener handles subsequent auth events like SIGN_IN, SIGN_OUT.
+        // onAuthStateChange fires immediately with the initial session, so we don't need a separate getSession() call.
+        // This single listener handles initial load, sign in, and sign out, preventing race conditions.
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (_event, newSession) => {
-                if (newSession?.user) {
-                     const { data: profile, error } = await supabase
-                        .from('profiles')
-                        .select('role')
-                        .eq('id', newSession.user.id)
-                        .single();
-                    
-                    if (error) {
-                        console.error("Error fetching profile on auth state change", error);
-                        // Log user in with default role if profile fetch fails
-                        const authUser: AuthUser = { ...newSession.user, role: 'siswa' };
-                        setSession(newSession);
-                        setUser(authUser);
-                        return;
-                    }
+            async (_event, session) => {
+                if (session?.user) {
+                    try {
+                        const { data: profile, error } = await supabase
+                            .from('profiles')
+                            .select('role')
+                            .eq('id', session.user.id)
+                            .single();
 
-                    const authUser: AuthUser = { ...newSession.user, role: (profile as UserProfile)?.role || 'siswa' };
-                    setSession(newSession);
-                    setUser(authUser);
+                        if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found, which is not a fatal error here
+                            throw error;
+                        }
+
+                        const authUser: AuthUser = { ...session.user, role: profile?.role || 'siswa' };
+                        setSession(session);
+                        setUser(authUser);
+                    } catch (error) {
+                        console.error("Error fetching profile on auth change. Signing out.", error);
+                        // If profile fetch fails, sign out to prevent inconsistent/insecure state
+                        await supabase.auth.signOut();
+                        setSession(null);
+                        setUser(null);
+                    }
                 } else {
-                    // This handles logout.
+                    // This handles the SIGNED_OUT event or if there's no initial session.
                     setSession(null);
                     setUser(null);
                 }
+                
+                // The first event fired is INITIAL_SESSION. After that, we are no longer loading.
+                // This guarantees the loading spinner will disappear.
+                setLoading(false);
             }
         );
 
@@ -114,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         const events = ['mousemove', 'keydown', 'click', 'scroll'];
         
-        if (user) {
+        if (user) { // Only run the timer if a user is logged in
             resetLogoutTimer();
             events.forEach(event => window.addEventListener(event, resetLogoutTimer));
         }
@@ -125,10 +98,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             events.forEach(event => window.removeEventListener(event, resetLogoutTimer));
         };
-    }, [user, resetLogoutTimer]);
+    }, [user]);
     
     const value = { session, user, loading, signOut };
 
+    // We render children immediately. The loading state is handled by ProtectedRoute.
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
