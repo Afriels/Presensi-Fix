@@ -60,7 +60,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               <p className="text-xs text-gray-500 capitalize">{user.role}</p>
             </div>
             <button 
-              onClick={signOut} 
+              onClick={() => signOut()} 
               className="p-2 text-gray-600 hover:bg-red-100 hover:text-red-600 rounded-full transition-colors"
               title="Logout"
             >

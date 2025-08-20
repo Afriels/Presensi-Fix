@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Student, Class, AppSettings } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
 import QRCode from 'qrcode';
-import { supabase } from '../services/supabase';
+import { supabase, TablesInsert, TablesUpdate } from '../services/supabase';
 import { useAuth } from './auth/Auth';
 
 const StudentData: React.FC = () => {
@@ -72,13 +72,14 @@ const StudentData: React.FC = () => {
     const handleSave = async (student: Student) => {
         try {
             if (editingStudent) { // Update
+                const studentToUpdate: TablesUpdate<'students'> = { name: student.name, class_id: student.classId };
                 const { error } = await supabase
                     .from('students')
-                    .update({ name: student.name, class_id: student.classId })
+                    .update(studentToUpdate)
                     .eq('id', student.id);
                 if (error) throw error;
             } else { // Insert
-                 const newStudentData = {
+                 const newStudentData: TablesInsert<'students'> = {
                     id: student.id,
                     name: student.name,
                     class_id: student.classId,
@@ -246,7 +247,11 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, onClose }) => {
             .catch(err => console.error("Failed to generate QR code", err));
             
         const fetchSchoolName = async () => {
-            const { data } = await supabase.from('app_settings').select('school_name').eq('id', 1).single();
+            const { data, error } = await supabase.from('app_settings').select('school_name').eq('id', 1).single();
+            if (error) {
+                console.error("Error fetching school name:", error);
+                return;
+            }
             if(data && data.school_name) {
                 setSchoolName(data.school_name);
             }

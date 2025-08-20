@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { AppSettings, Class, AcademicYear } from '../types';
 import Card from './ui/Card';
 import { PencilIcon, TrashIcon } from '../constants';
-import { supabase, Enums, Tables } from '../services/supabase';
+import { supabase, Enums, Tables, TablesUpdate, TablesInsert } from '../services/supabase';
 import { useAuth } from './auth/Auth';
 
 type Tab = 'identitas' | 'jam' | 'kelas' | 'akademik' | 'sistem' | 'users';
@@ -68,7 +68,9 @@ const IdentitySettings: React.FC = () => {
         const fetchSettings = async () => {
             setLoading(true);
             const { data, error } = await supabase.from('app_settings').select('*').eq('id', 1).single();
-            if (data) {
+            if (error) {
+                console.error("Error fetching settings:", error);
+            } else if (data) {
                 setSettings({ appName: data.app_name || '', schoolName: data.school_name || ''});
             }
             setLoading(false);
@@ -83,10 +85,11 @@ const IdentitySettings: React.FC = () => {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const { error } = await supabase.from('app_settings').update({
+            const settingsToUpdate: TablesUpdate<'app_settings'> = {
                 app_name: settings.appName,
                 school_name: settings.schoolName
-            }).eq('id', 1);
+            };
+            const { error } = await supabase.from('app_settings').update(settingsToUpdate).eq('id', 1);
             if (error) throw error;
 
             setMessage('Pengaturan identitas berhasil disimpan!');
@@ -129,8 +132,10 @@ const TimeSettings: React.FC = () => {
 
     const fetchSettings = useCallback(async () => {
         setLoading(true);
-        const { data } = await supabase.from('app_settings').select('entry_time, late_time, exit_time').eq('id', 1).single();
-        if (data) {
+        const { data, error } = await supabase.from('app_settings').select('entry_time, late_time, exit_time').eq('id', 1).single();
+        if (error) {
+            console.error("Error fetching time settings:", error);
+        } else if (data) {
             setSettings({ entryTime: data.entry_time, lateTime: data.late_time, exitTime: data.exit_time });
         }
         setLoading(false);
@@ -144,11 +149,12 @@ const TimeSettings: React.FC = () => {
 
     const handleSave = async () => {
         try {
-             const { error } = await supabase.from('app_settings').update({
+            const settingsToUpdate: TablesUpdate<'app_settings'> = {
                 entry_time: settings.entryTime,
                 late_time: settings.lateTime,
                 exit_time: settings.exitTime
-            }).eq('id', 1);
+            };
+            const { error } = await supabase.from('app_settings').update(settingsToUpdate).eq('id', 1);
             if (error) throw error;
             setMessage('Pengaturan jam berhasil disimpan!');
             setTimeout(() => setMessage(''), 3000);
@@ -214,7 +220,7 @@ const ClassManagement: React.FC = () => {
         e.preventDefault();
         if (newClassName.trim()) {
             try {
-                const newClass = { id: `cls-${Date.now()}`, name: newClassName.trim() };
+                const newClass: TablesInsert<'classes'> = { id: `cls-${Date.now()}`, name: newClassName.trim() };
                 const { data, error } = await supabase.from('classes').insert(newClass).select().single();
                 if (error) throw error;
                 if (data) {
@@ -272,7 +278,11 @@ const AcademicYearManagement: React.FC = () => {
     const fetchYears = useCallback(async () => {
         setLoading(true);
         const { data, error } = await supabase.from('academic_years').select('*').order('year', { ascending: false });
-        if (data) setYears(data.map(y => ({...y, semester: y.semester as 'Ganjil' | 'Genap'})));
+        if (error) {
+            console.error("Error fetching academic years:", error);
+        } else if (data) {
+            setYears(data.map(y => ({...y, semester: y.semester as 'Ganjil' | 'Genap'})));
+        }
         setLoading(false);
     }, []);
     
@@ -305,10 +315,12 @@ const AcademicYearManagement: React.FC = () => {
     const handleSave = async (yearToSave: Partial<AcademicYear>) => {
         try {
             if (editingYear) {
-                const { error } = await supabase.from('academic_years').update({ year: yearToSave.year, semester: yearToSave.semester }).eq('id', editingYear.id);
+                const yearToUpdate: TablesUpdate<'academic_years'> = { year: yearToSave.year, semester: yearToSave.semester };
+                const { error } = await supabase.from('academic_years').update(yearToUpdate).eq('id', editingYear.id);
                 if(error) throw error;
             } else {
-                const { error } = await supabase.from('academic_years').insert({ year: yearToSave.year!, semester: yearToSave.semester!, is_active: years.length === 0 });
+                 const yearToInsert: TablesInsert<'academic_years'> = { year: yearToSave.year!, semester: yearToSave.semester!, is_active: years.length === 0 };
+                const { error } = await supabase.from('academic_years').insert(yearToInsert);
                 if(error) throw error;
             }
             fetchYears();
@@ -441,11 +453,10 @@ const UserManagement = () => {
             const { data: profilesData, error: profilesError } = await supabase.from('profiles').select('*');
             if (profilesError) throw profilesError;
 
-            const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+            const { data: authUsersData, error: authError } = await supabase.auth.admin.listUsers();
             if (authError) throw authError;
-
-            // After error check, authUsers and authUsers.users are guaranteed to be defined.
-            const usersMap = new Map(authUsers.users.map(u => [u.id, u.email]));
+            
+            const usersMap = new Map(authUsersData.users.map(u => [u.id, u.email]));
             
             const combinedUsers = profilesData.map(profile => ({
                 ...profile,

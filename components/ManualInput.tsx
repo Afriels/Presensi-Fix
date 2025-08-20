@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Student, AttendanceRecord, AttendanceStatus } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
 import { getTodayDateString } from '../services/dataService';
-import { supabase } from '../services/supabase';
+import { supabase, TablesInsert } from '../services/supabase';
 
 const ManualInput: React.FC = () => {
     const [students, setStudents] = useState<Student[]>([]);
@@ -15,6 +15,10 @@ const ManualInput: React.FC = () => {
     useEffect(() => {
         const fetchStudents = async () => {
             const { data, error } = await supabase.from('students').select('id, name').order('name');
+            if (error) {
+                console.error("Error fetching students:", error);
+                return;
+            }
             if (data) {
                 setStudents(data.map(s => ({...s, classId: '', photoUrl: ''}))); // classId and photoUrl not needed here
             }
@@ -47,7 +51,7 @@ const ManualInput: React.FC = () => {
 
             if (fetchError) throw fetchError;
 
-            const recordToUpsert = {
+            const recordToUpsert: TablesInsert<'attendance_records'> = {
                 student_id: studentId,
                 date,
                 check_in: null,

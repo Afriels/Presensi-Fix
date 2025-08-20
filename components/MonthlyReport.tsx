@@ -4,7 +4,7 @@ import Card, { CardHeader, CardTitle } from './ui/Card';
 import { PencilIcon, TrashIcon, PlusIcon } from '../constants';
 import AttendanceModal from './modals/AttendanceModal';
 import { getCurrentTimeString, getTodayDateString } from '../services/dataService';
-import { supabase } from '../services/supabase';
+import { supabase, TablesUpdate, TablesInsert } from '../services/supabase';
 import { useAuth } from './auth/Auth';
 
 const MonthlyReport: React.FC = () => {
@@ -103,14 +103,16 @@ const MonthlyReport: React.FC = () => {
     const handleSave = async (recordToSave: Partial<AttendanceRecord>) => {
         try {
             if (recordToSave.id) { // Update
-                const { error } = await supabase.from('attendance_records').update({
+                const recordToUpdate: TablesUpdate<'attendance_records'> = {
                     date: recordToSave.date, status: recordToSave.status, check_in: recordToSave.checkIn, notes: recordToSave.notes
-                }).eq('id', recordToSave.id);
+                };
+                const { error } = await supabase.from('attendance_records').update(recordToUpdate).eq('id', recordToSave.id);
                 if (error) throw error;
             } else { // Insert
-                const { error } = await supabase.from('attendance_records').insert({
+                const recordToInsert: TablesInsert<'attendance_records'> = {
                     student_id: recordToSave.studentId!, date: recordToSave.date!, status: recordToSave.status!, check_in: recordToSave.checkIn, notes: recordToSave.notes
-                });
+                };
+                const { error } = await supabase.from('attendance_records').insert(recordToInsert);
                 if (error) throw error;
             }
             fetchData(); // Refresh all monthly data

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { supabase, Enums, Tables } from '../../services/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -23,29 +23,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [session, setSession] = useState<Session | null>(null);
     const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
+    const logoutTimer = useRef<number | undefined>();
+
+    const signOut = useCallback(async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            console.error('Error signing out:', error.message);
+        } else {
+            setUser(null);
+            setSession(null);
+        }
+    }, []);
+
+    const resetLogoutTimer = useCallback(() => {
+        if (logoutTimer.current) {
+            clearTimeout(logoutTimer.current);
+        }
+        logoutTimer.current = window.setTimeout(() => {
+            console.log("Auto-logging out due to inactivity.");
+            signOut();
+        }, 10 * 60 * 1000); // 10 minutes
+    }, [signOut]);
 
     useEffect(() => {
-        setLoading(true);
         const { data: authListener } = supabase.auth.onAuthStateChange(
             async (_event, session) => {
-                setSession(session);
-                 if (session?.user) {
-                    try {
-                        const { data: profile } = await supabase
+                try {
+                    setSession(session);
+                    if (session?.user) {
+                        const { data: profile, error } = await supabase
                             .from('profiles')
                             .select('role')
                             .eq('id', session.user.id)
                             .single();
                         
+                        if (error) {
+                            console.error("Error fetching profile:", error);
+                        }
+
                         setUser({ ...session.user, role: profile?.role || 'siswa' });
-                    } catch (e) {
-                        console.error("Error fetching profile", e);
-                        setUser(null); // Ensure user is cleared if profile fetch fails
+                    } else {
+                        setUser(null);
                     }
-                } else {
-                    setUser(null);
+                } catch (e) {
+                    console.error("Error fetching profile during auth state change", e);
+                    setUser(null); // Ensure user is cleared if profile fetch fails
+                } finally {
+                    setLoading(false);
                 }
-                setLoading(false);
             }
         );
 
@@ -54,20 +79,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, []);
 
-    const signOut = async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-            console.error('Error signing out:', error.message);
-        } else {
-            setUser(null);
-            setSession(null);
+    // Effect for auto-logout timer
+    useEffect(() => {
+        const events = ['mousemove', 'keydown', 'click', 'scroll'];
+        
+        if (user) {
+            resetLogoutTimer();
+            events.forEach(event => window.addEventListener(event, resetLogoutTimer));
         }
-    };
+
+        return () => {
+            if (logoutTimer.current) {
+                clearTimeout(logoutTimer.current);
+            }
+            events.forEach(event => window.removeEventListener(event, resetLogoutTimer));
+        };
+    }, [user, resetLogoutTimer]);
     
     const value = { session, user, loading, signOut };
 
-    // By rendering children immediately, we allow ProtectedRoute to handle the loading state
-    // and display a spinner, preventing the blank white screen.
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 

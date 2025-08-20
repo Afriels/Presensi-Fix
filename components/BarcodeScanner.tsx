@@ -4,7 +4,7 @@ import { getTodayDateString, getCurrentTimeString } from '../services/dataServic
 import Card from './ui/Card';
 import { SOUNDS } from '../constants';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { supabase } from '../services/supabase';
+import { supabase, TablesInsert } from '../services/supabase';
 
 type ScanStatus = 'idle' | 'success' | 'error' | 'warning' | 'loading';
 interface ScanResult {
@@ -106,7 +106,7 @@ const BarcodeScanner: React.FC = () => {
         const lateTimeDate = new Date(`${today}T${settings.lateTime}:00`);
         const status = currentTimeDate > lateTimeDate ? AttendanceStatus.TERLAMBAT : AttendanceStatus.HADIR;
 
-        const newRecord = {
+        const newRecord: TablesInsert<'attendance_records'> = {
             student_id: id,
             date: today,
             check_in: currentTime,
