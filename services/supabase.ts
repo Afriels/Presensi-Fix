@@ -31,7 +31,15 @@ export type Database = {
           class_id?: string;
           photo_url?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "students_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          }
+        ];
       };
       classes: {
         Row: {
@@ -75,7 +83,15 @@ export type Database = {
           status?: 'Hadir' | 'Terlambat' | 'Sakit' | 'Ijin' | 'Alpa';
           notes?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          }
+        ];
       };
       app_settings: {
         Row: {
@@ -145,7 +161,14 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      get_users_with_email: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          email: string
+          role: Enums<'user_role'>
+        }[]
+      }
     };
     Enums: {
       user_role: 'admin' | 'guru' | 'siswa';

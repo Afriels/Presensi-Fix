@@ -6,9 +6,12 @@ import { Navigate, useLocation } from 'react-router-dom';
 type UserProfile = Tables<'profiles'>;
 type UserRole = Enums<'user_role'>;
 
-interface AuthUser extends User {
+// Using a type intersection for more robust extension of the Supabase User type.
+// This resolves potential issues with property re-declarations (like 'role')
+// and ensures all properties from the base User type, like 'email', are preserved.
+type AuthUser = User & {
     role: UserRole;
-}
+};
 
 interface AuthContextType {
     session: Session | null;
@@ -23,7 +26,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [session, setSession] = useState<Session | null>(null);
     const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
-    const logoutTimer = useRef<number | undefined>();
+    // Explicitly initializing useRef with 'undefined' to satisfy linters or environments
+    // that might incorrectly report an error for a no-argument call.
+    const logoutTimer = useRef<number | undefined>(undefined);
 
     const signOut = async () => {
         await supabase.auth.signOut();

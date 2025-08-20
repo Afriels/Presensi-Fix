@@ -6,7 +6,14 @@ import { supabase, Enums, Tables, TablesUpdate, TablesInsert } from '../services
 import { useAuth } from './auth/Auth';
 
 type Tab = 'identitas' | 'jam' | 'kelas' | 'akademik' | 'sistem' | 'users';
-type UserProfile = Tables<'profiles'> & { email?: string };
+
+// This type now reflects the data returned from our secure RPC function
+type UserProfile = {
+    id: string;
+    email: string;
+    role: Enums<'user_role'>;
+};
+
 
 const Settings: React.FC = () => {
     const { user } = useAuth();
@@ -450,24 +457,16 @@ const UserManagement = () => {
         setLoading(true);
         setError('');
         try {
-            // This is a bit advanced: Supabase doesn't let you join auth.users easily.
-            // We fetch profiles, then fetch the user emails.
-            const { data: profilesData, error: profilesError } = await supabase.from('profiles').select('*');
-            if (profilesError) throw profilesError;
+            // Securely fetch users via a PostgreSQL function in Supabase.
+            // This function must be created in the Supabase SQL Editor.
+            const { data, error: rpcError } = await supabase.rpc('get_users_with_email');
 
-            const { data: authUsersData, error: authError } = await supabase.auth.admin.listUsers();
-            if (authError) throw authError;
-            
-            const usersMap = new Map(authUsersData.users.map(u => [u.id, u.email]));
-            
-            const combinedUsers = (profilesData || []).map(profile => ({
-                ...profile,
-                email: usersMap.get(profile.id) || 'N/A'
-            }));
+            if (rpcError) throw rpcError;
 
-            setUsers(combinedUsers);
+            setUsers(data || []);
+
         } catch (err: any) {
-            setError('Gagal memuat pengguna. Pastikan Anda memiliki hak akses admin di Supabase.');
+            setError('Gagal memuat daftar pengguna. Pastikan fungsi "get_users_with_email" ada di database Supabase Anda.');
             console.error(err);
         } finally {
             setLoading(false);
