@@ -1,5 +1,5 @@
-
 import React from 'react';
+import { Enums } from './services/supabase';
 
 export const HomeIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -37,18 +37,52 @@ export const TrashIcon = (props: React.SVGProps<SVGSVGElement>) => (
 export const PencilIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/><path d="m15 5 4 4"/></svg>
 );
+export const LogOutIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+);
 
+type NavLink = {
+    name: string;
+    href: string;
+    icon: (props: React.SVGProps<SVGSVGElement>) => JSX.Element;
+};
 
-export const NAV_LINKS = [
-  { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-  { name: 'Scan Barcode', href: '/scan', icon: ScanIcon },
-  { name: 'Input Manual', href: '/input-manual', icon: PencilIcon },
-  { name: 'Laporan Harian', href: '/laporan-harian', icon: FileTextIcon },
-  { name: 'Rekap Bulanan', href: '/laporan-bulanan', icon: CalendarIcon },
-  { name: 'Data Siswa', href: '/data-siswa', icon: UsersIcon },
-  { name: 'Petunjuk', href: '/petunjuk', icon: HelpCircleIcon },
-  { name: 'Pengaturan', href: '/pengaturan', icon: SettingsIcon },
-];
+type UserRole = Enums<'user_role'>;
+
+export const getNavLinks = (role: UserRole | undefined): NavLink[] => {
+    const allLinks = [
+        { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+        { name: 'Scan Barcode', href: '/scan', icon: ScanIcon },
+        { name: 'Input Manual', href: '/input-manual', icon: PencilIcon },
+        { name: 'Laporan Harian', href: '/laporan-harian', icon: FileTextIcon },
+        { name: 'Rekap Bulanan', href: '/laporan-bulanan', icon: CalendarIcon },
+        { name: 'Data Siswa', href: '/data-siswa', icon: UsersIcon },
+        { name: 'Petunjuk', href: '/petunjuk', icon: HelpCircleIcon },
+        { name: 'Pengaturan', href: '/pengaturan', icon: SettingsIcon },
+    ];
+
+    if (role === 'admin') {
+        return allLinks;
+    }
+    if (role === 'guru') {
+        return [
+            { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+            { name: 'Scan Barcode', href: '/scan', icon: ScanIcon },
+            { name: 'Laporan Harian', href: '/laporan-harian', icon: FileTextIcon },
+            { name: 'Rekap Bulanan', href: '/laporan-bulanan', icon: CalendarIcon },
+            { name: 'Data Siswa', href: '/data-siswa', icon: UsersIcon },
+            { name: 'Petunjuk', href: '/petunjuk', icon: HelpCircleIcon },
+        ];
+    }
+    if (role === 'siswa') {
+        return [
+            { name: 'Scan Barcode', href: '/scan', icon: ScanIcon },
+            { name: 'Petunjuk', href: '/petunjuk', icon: HelpCircleIcon },
+        ];
+    }
+    return []; // Return empty for unknown roles or while loading
+};
+
 
 export const SOUNDS = {
     SUCCESS: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',

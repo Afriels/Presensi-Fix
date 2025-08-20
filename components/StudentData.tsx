@@ -3,8 +3,10 @@ import { Student, Class, AppSettings } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
 import QRCode from 'qrcode';
 import { supabase } from '../services/supabase';
+import { useAuth } from './auth/Auth';
 
 const StudentData: React.FC = () => {
+    const { user } = useAuth();
     const [students, setStudents] = useState<Student[]>([]);
     const [classes, setClasses] = useState<Class[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -116,9 +118,11 @@ const StudentData: React.FC = () => {
             <CardHeader>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <CardTitle>Data Siswa</CardTitle>
-                    <button onClick={() => openModal()} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition w-full sm:w-auto">
-                        Tambah Siswa
-                    </button>
+                    {user?.role === 'admin' && (
+                        <button onClick={() => openModal()} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition w-full sm:w-auto">
+                            Tambah Siswa
+                        </button>
+                    )}
                 </div>
             </CardHeader>
             <input
@@ -149,9 +153,13 @@ const StudentData: React.FC = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classMap.get(student.classId) || 'Tidak ada kelas'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex justify-end items-center gap-4">
-                                            <button onClick={() => openModal(student)} className="text-primary-600 hover:text-primary-900">Edit</button>
+                                            {user?.role === 'admin' && (
+                                                <>
+                                                    <button onClick={() => openModal(student)} className="text-primary-600 hover:text-primary-900">Edit</button>
+                                                    <button onClick={() => handleDelete(student.id)} className="text-red-600 hover:text-red-900">Hapus</button>
+                                                </>
+                                            )}
                                             <button onClick={() => setQrStudent(student)} className="text-green-600 hover:text-green-900">QR Code</button>
-                                            <button onClick={() => handleDelete(student.id)} className="text-red-600 hover:text-red-900">Hapus</button>
                                         </div>
                                     </td>
                                 </tr>

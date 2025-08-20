@@ -5,8 +5,10 @@ import { PencilIcon, TrashIcon, PlusIcon } from '../constants';
 import AttendanceModal from './modals/AttendanceModal';
 import { getCurrentTimeString, getTodayDateString } from '../services/dataService';
 import { supabase } from '../services/supabase';
+import { useAuth } from './auth/Auth';
 
 const MonthlyReport: React.FC = () => {
+    const { user } = useAuth();
     const today = new Date();
     const [selectedMonth, setSelectedMonth] = useState(`${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`);
     const [selectedClass, setSelectedClass] = useState('all');
@@ -237,6 +239,7 @@ const MonthlyReport: React.FC = () => {
                     onEdit={handleOpenCrudModal}
                     onAdd={() => handleOpenCrudModal(null)}
                     onDelete={handleDelete}
+                    isAdmin={user?.role === 'admin'}
                 />
             )}
             
@@ -262,9 +265,10 @@ interface StudentDetailModalProps {
   onEdit: (record: AttendanceRecord) => void;
   onAdd: () => void;
   onDelete: (recordId: number) => void;
+  isAdmin: boolean;
 }
 
-const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student, month, attendance, onClose, onEdit, onAdd, onDelete }) => {
+const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student, month, attendance, onClose, onEdit, onAdd, onDelete, isAdmin }) => {
   const studentMonthlyAttendance = useMemo(() => {
     return attendance
       .filter(a => a.studentId === student.id) // Already filtered by month in parent
@@ -289,9 +293,11 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student, month,
                     <h3 className="text-lg font-medium leading-6 text-gray-900">Detail Absensi: {student.name}</h3>
                     <p className="text-sm text-gray-500">Bulan: {new Date(month + '-02').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</p>
                 </div>
-                <button onClick={onAdd} className="flex items-center px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">
-                    <PlusIcon className="h-4 w-4 mr-1"/> Tambah
-                </button>
+                {isAdmin && (
+                    <button onClick={onAdd} className="flex items-center px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">
+                        <PlusIcon className="h-4 w-4 mr-1"/> Tambah
+                    </button>
+                )}
             </div>
             <div className="flex-grow overflow-y-auto">
                 {studentMonthlyAttendance.length > 0 ? (
@@ -308,10 +314,12 @@ const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student, month,
                                         {record.notes && ` | Ket: ${record.notes}`}
                                     </p>
                                 </div>
-                                <div className="flex items-center gap-2 self-end sm:self-center">
-                                    <button onClick={() => onEdit(record)} className="p-2 text-primary-600 hover:bg-gray-100 rounded-full"><PencilIcon className="h-4 w-4"/></button>
-                                    <button onClick={() => onDelete(record.id)} className="p-2 text-red-600 hover:bg-gray-100 rounded-full"><TrashIcon className="h-4 w-4"/></button>
-                                </div>
+                                {isAdmin && (
+                                    <div className="flex items-center gap-2 self-end sm:self-center">
+                                        <button onClick={() => onEdit(record)} className="p-2 text-primary-600 hover:bg-gray-100 rounded-full"><PencilIcon className="h-4 w-4"/></button>
+                                        <button onClick={() => onDelete(record.id)} className="p-2 text-red-600 hover:bg-gray-100 rounded-full"><TrashIcon className="h-4 w-4"/></button>
+                                    </div>
+                                )}
                             </li>
                         ))}
                     </ul>

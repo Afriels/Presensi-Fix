@@ -53,12 +53,12 @@ const Dashboard: React.FC = () => {
 
         if (attendanceError) throw attendanceError;
 
-        const present = attendanceData.filter(a => a.status === AttendanceStatus.HADIR).length;
-        const late = attendanceData.filter(a => a.status === AttendanceStatus.TERLAMBAT).length;
-        const sick = attendanceData.filter(a => a.status === AttendanceStatus.SAKIT).length;
-        const permitted = attendanceData.filter(a => a.status === AttendanceStatus.IJIN).length;
+        const present = (attendanceData || []).filter(a => a.status === AttendanceStatus.HADIR).length;
+        const late = (attendanceData || []).filter(a => a.status === AttendanceStatus.TERLAMBAT).length;
+        const sick = (attendanceData || []).filter(a => a.status === AttendanceStatus.SAKIT).length;
+        const permitted = (attendanceData || []).filter(a => a.status === AttendanceStatus.IJIN).length;
         
-        const attendedIds = new Set(attendanceData.map(a => a.student_id));
+        const attendedIds = new Set((attendanceData || []).map(a => a.student_id));
         const notPresent = (totalStudents || 0) - attendedIds.size;
 
         setStats({ present, late, sick, permitted, notPresent });

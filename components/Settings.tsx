@@ -2,30 +2,43 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { AppSettings, Class, AcademicYear } from '../types';
 import Card from './ui/Card';
 import { PencilIcon, TrashIcon } from '../constants';
-import { supabase } from '../services/supabase';
+import { supabase, Enums, Tables } from '../services/supabase';
+import { useAuth } from './auth/Auth';
 
-type Tab = 'identitas' | 'jam' | 'kelas' | 'akademik' | 'sistem';
+type Tab = 'identitas' | 'jam' | 'kelas' | 'akademik' | 'sistem' | 'users';
+type UserProfile = Tables<'profiles'> & { email?: string };
 
 const Settings: React.FC = () => {
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<Tab>('identitas');
+    
+    const tabs: { name: string; tab: Tab; adminOnly: boolean }[] = [
+        { name: 'Identitas', tab: 'identitas', adminOnly: false },
+        { name: 'Jam Sekolah', tab: 'jam', adminOnly: false },
+        { name: 'Manajemen Kelas', tab: 'kelas', adminOnly: true },
+        { name: 'Tahun Pelajaran', tab: 'akademik', adminOnly: true },
+        { name: 'Manajemen User', tab: 'users', adminOnly: true },
+        { name: 'Sistem', tab: 'sistem', adminOnly: false },
+    ];
+    
+    const availableTabs = tabs.filter(tab => !tab.adminOnly || user?.role === 'admin');
 
     return (
         <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">Pengaturan</h1>
             <div className="border-b mb-6">
                 <div className="flex items-center overflow-x-auto whitespace-nowrap">
-                    <TabButton name="Identitas" tab="identitas" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <TabButton name="Jam Sekolah" tab="jam" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <TabButton name="Manajemen Kelas" tab="kelas" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <TabButton name="Tahun Pelajaran" tab="akademik" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <TabButton name="Sistem" tab="sistem" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    {availableTabs.map(t => (
+                        <TabButton key={t.tab} name={t.name} tab={t.tab} activeTab={activeTab} setActiveTab={setActiveTab} />
+                    ))}
                 </div>
             </div>
             <div>
                 {activeTab === 'identitas' && <IdentitySettings />}
                 {activeTab === 'jam' && <TimeSettings />}
-                {activeTab === 'kelas' && <ClassManagement />}
-                {activeTab === 'akademik' && <AcademicYearManagement />}
+                {activeTab === 'kelas' && user?.role === 'admin' && <ClassManagement />}
+                {activeTab === 'akademik' && user?.role === 'admin' && <AcademicYearManagement />}
+                {activeTab === 'users' && user?.role === 'admin' && <UserManagement />}
                 {activeTab === 'sistem' && <SystemSettings />}
             </div>
         </div>
@@ -46,6 +59,7 @@ const TabButton: React.FC<{ name: string; tab: Tab; activeTab: Tab; setActiveTab
 );
 
 const IdentitySettings: React.FC = () => {
+    const { user } = useAuth();
     const [settings, setSettings] = useState<Partial<AppSettings>>({});
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(true);
@@ -90,15 +104,17 @@ const IdentitySettings: React.FC = () => {
             <form onSubmit={handleSave} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Nama Aplikasi</label>
-                    <input type="text" name="appName" value={settings.appName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" />
+                    <input type="text" name="appName" value={settings.appName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'} />
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-700">Nama Sekolah</label>
-                    <input type="text" name="schoolName" value={settings.schoolName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" />
+                    <input type="text" name="schoolName" value={settings.schoolName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
                 </div>
-                <div className="flex justify-end">
-                    <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Simpan Perubahan</button>
-                </div>
+                {user?.role === 'admin' && (
+                    <div className="flex justify-end">
+                        <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Simpan Perubahan</button>
+                    </div>
+                )}
             </form>
             {message && <p className="mt-4 text-sm text-green-600">{message}</p>}
         </Card>
@@ -106,6 +122,7 @@ const IdentitySettings: React.FC = () => {
 };
 
 const TimeSettings: React.FC = () => {
+    const { user } = useAuth();
     const [settings, setSettings] = useState<Partial<AppSettings>>({ entryTime: '07:00', lateTime: '07:15', exitTime: '15:00' });
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(true);
@@ -148,20 +165,22 @@ const TimeSettings: React.FC = () => {
             <div className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Jam Masuk</label>
-                    <input type="time" name="entryTime" value={settings.entryTime} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" />
+                    <input type="time" name="entryTime" value={settings.entryTime} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-700">Batas Terlambat</label>
-                    <input type="time" name="lateTime" value={settings.lateTime} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" />
+                    <input type="time" name="lateTime" value={settings.lateTime} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-700">Jam Pulang</label>
-                    <input type="time" name="exitTime" value={settings.exitTime} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" />
+                    <input type="time" name="exitTime" value={settings.exitTime} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
                 </div>
             </div>
-             <div className="flex justify-end mt-4">
-                <button onClick={handleSave} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Simpan Perubahan</button>
-            </div>
+             {user?.role === 'admin' && (
+                <div className="flex justify-end mt-4">
+                    <button onClick={handleSave} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Simpan Perubahan</button>
+                </div>
+             )}
             {message && <p className="mt-4 text-sm text-green-600">{message}</p>}
         </Card>
     );
@@ -196,9 +215,11 @@ const ClassManagement: React.FC = () => {
         if (newClassName.trim()) {
             try {
                 const newClass = { id: `cls-${Date.now()}`, name: newClassName.trim() };
-                const { error } = await supabase.from('classes').insert(newClass).select().single();
+                const { data, error } = await supabase.from('classes').insert(newClass).select().single();
                 if (error) throw error;
-                setClasses(prev => [...prev, newClass].sort((a,b) => a.name.localeCompare(b.name)));
+                if (data) {
+                    setClasses(prev => [...prev, data as Class].sort((a,b) => a.name.localeCompare(b.name)));
+                }
                 setNewClassName('');
             } catch (err: any) {
                 alert('Gagal menambahkan kelas: ' + err.message);
@@ -403,6 +424,92 @@ const SystemSettings: React.FC = () => {
                 </p>
             </Card>
         </div>
+    );
+}
+
+const UserManagement = () => {
+    const [users, setUsers] = useState<UserProfile[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
+    const fetchUsers = useCallback(async () => {
+        setLoading(true);
+        setError('');
+        try {
+            // This is a bit advanced: Supabase doesn't let you join auth.users easily.
+            // We fetch profiles, then fetch the user emails.
+            const { data: profilesData, error: profilesError } = await supabase.from('profiles').select('*');
+            if (profilesError) throw profilesError;
+
+            const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+            if (authError) throw authError;
+
+            const usersMap = new Map(authUsers?.users.map(u => [u.id, u.email]) || []);
+            
+            const combinedUsers = profilesData.map(profile => ({
+                ...profile,
+                email: usersMap.get(profile.id) || 'N/A'
+            }));
+
+            setUsers(combinedUsers);
+        } catch (err: any) {
+            setError('Gagal memuat pengguna. Pastikan Anda memiliki hak akses admin di Supabase.');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
+
+    const handleRoleChange = async (userId: string, newRole: Enums<'user_role'>) => {
+        try {
+            const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+            if (error) throw error;
+            setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+        } catch(err: any) {
+            alert('Gagal mengubah peran: ' + err.message);
+        }
+    }
+
+    return (
+        <Card className="max-w-2xl">
+            <h3 className="text-lg font-semibold mb-4">Manajemen Pengguna</h3>
+            {loading && <p>Memuat pengguna...</p>}
+            {error && <p className="text-red-500">{error}</p>}
+            {!loading && !error && (
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Peran</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {users.map(u => (
+                                <tr key={u.id}>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{u.email}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <select 
+                                            value={u.role} 
+                                            onChange={(e) => handleRoleChange(u.id, e.target.value as Enums<'user_role'>)}
+                                            className="p-1 border rounded-md"
+                                        >
+                                            <option value="admin">Admin</option>
+                                            <option value="guru">Guru</option>
+                                            <option value="siswa">Siswa</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </Card>
     );
 }
 

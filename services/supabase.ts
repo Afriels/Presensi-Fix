@@ -2,6 +2,14 @@ import { createClient } from '@supabase/supabase-js';
 
 // Define the types for your database schema here.
 // This will provide type-safety for all Supabase operations.
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
 export type Database = {
   public: {
     Tables: {
@@ -25,7 +33,7 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "students_class_id_fkey";
+            foreignKeyName: "students_class_id_fkey",
             columns: ["class_id"];
             isOneToOne: false;
             referencedRelation: "classes";
@@ -132,7 +140,30 @@ export type Database = {
           is_active?: boolean;
         };
         Relationships: [];
-      }
+      };
+      profiles: {
+        Row: {
+          id: string;
+          role: Database['public']['Enums']['user_role'];
+        };
+        Insert: {
+          id: string;
+          role?: Database['public']['Enums']['user_role'];
+        };
+        Update: {
+          id?: string;
+          role?: Database['public']['Enums']['user_role'];
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'profiles_id_fkey',
+            columns: ['id'],
+            isOneToOne: true,
+            referencedRelation: 'users',
+            referencedColumns: ['id']
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -141,7 +172,7 @@ export type Database = {
       [_ in never]: never;
     };
     Enums: {
-      [_ in never]: never;
+      user_role: 'admin' | 'guru' | 'siswa';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -149,21 +180,88 @@ export type Database = {
   };
 };
 
+export type Tables<
+  PublicTableNameOrOptions extends
+    | keyof (Database['public']['Tables'] & Database['public']['Views'])
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions['schema']]['Tables'] &
+        Database[PublicTableNameOrOptions['schema']]['Views'])
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions['schema']]['Tables'] &
+      Database[PublicTableNameOrOptions['schema']]['Views'])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : PublicTableNameOrOptions extends keyof (Database['public']['Tables'] &
+        Database['public']['Views'])
+    ? (Database['public']['Tables'] &
+        Database['public']['Views'])[PublicTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
-// =================================================================================
-// PENTING: GANTI DENGAN KREDENSIAL SUPABASE ANDA YANG SEBENARNYA!
-// Anda bisa mendapatkannya dari Project Settings > API di dashboard Supabase.
-// URL proyek Anda akan terlihat seperti: https://<project-id>.supabase.co
-// =================================================================================
-const supabaseUrl = 'https://vzcimsvyjzzqrlqlrpwp.supabase.co'; // CONTOH: Ganti dengan URL Supabase Anda
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6Y2ltc3Z5anp6cXJscWxycHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2NjkzOTYsImV4cCI6MjA3MTI0NTM5Nn0.Ru69Z_B4Cg43xYtWjh6lh7tRG03eYoWNYLCCkUsju1U'; // CONTOH: Ganti dengan Anon Key Anda
-// =================================================================================
+export type TablesInsert<
+  PublicTableNameOrOptions extends
+    | keyof Database['public']['Tables']
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions['schema']]['Tables']
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions['schema']]['Tables'][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : PublicTableNameOrOptions extends keyof Database['public']['Tables']
+    ? Database['public']['Tables'][PublicTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
-// Cek apakah kredensial masih placeholder
-if (supabaseUrl.includes('vzcimsvyjzzqrlqlrpwp') || supabaseKey.includes('Ru69Z_B4Cg43xYtWjh6lh7tRG03eYoWNYLCCkUsju1U')) {
-    const warningMessage = 'PERINGATAN: Anda masih menggunakan URL dan Kunci API Supabase placeholder. Silakan ganti dengan kredensial asli Anda di file `services/supabase.ts` untuk menjalankan aplikasi.';
-    console.warn(warningMessage);
-}
+export type TablesUpdate<
+  PublicTableNameOrOptions extends
+    | keyof Database['public']['Tables']
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions['schema']]['Tables']
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions['schema']]['Tables'][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : PublicTableNameOrOptions extends keyof Database['public']['Tables']
+    ? Database['public']['Tables'][PublicTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
-// Provide the Database type to the client for type-safety.
+export type Enums<
+  PublicEnumNameOrOptions extends
+    | keyof Database['public']['Enums']
+    | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicEnumNameOrOptions['schema']]['Enums']
+    : never = never,
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions['schema']]['Enums'][EnumName]
+  : PublicEnumNameOrOptions extends keyof Database['public']['Enums']
+    ? Database['public']['Enums'][PublicEnumNameOrOptions]
+    : never
+
+
+const supabaseUrl = 'https://vzcimsvyjzzqrlqlrpwp.supabase.co'; 
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6Y2ltc3Z5anp6cXJscWxycHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2NjkzOTYsImV4cCI6MjA3MTI0NTM5Nn0.Ru69Z_B4Cg43xYtWjh6lh7tRG03eYoWNYLCCkUsju1U'; 
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey);

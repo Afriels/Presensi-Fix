@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { NAV_LINKS, SchoolIcon } from '../../constants';
-import { AppSettings } from '../../types';
+import { getNavLinks, SchoolIcon } from '../../constants';
 import { supabase } from '../../services/supabase';
+import { useAuth } from '../auth/Auth';
 
 interface SidebarProps {
   isSidebarOpen: boolean;
@@ -11,6 +11,9 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, setIsSidebarOpen }) => {
   const [appName, setAppName] = useState('Aplikasi Absensi');
+  const { user } = useAuth();
+  
+  const navLinks = getNavLinks(user?.role);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -19,6 +22,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, setIsSidebarOpen }) =>
         .select('app_name')
         .eq('id', 1)
         .single();
+
+      if (error) {
+        console.error('Error fetching app settings:', error);
+        return;
+      }
 
       if (data && data.app_name) {
         setAppName(data.app_name);
@@ -38,7 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, setIsSidebarOpen }) =>
         <h1 className="text-xl font-bold text-gray-800 ml-2 truncate">{appName}</h1>
       </div>
       <nav className="mt-5">
-        {NAV_LINKS.map((link) => (
+        {navLinks.map((link) => (
           <NavLink
             key={link.name}
             to={link.href}

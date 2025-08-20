@@ -5,8 +5,10 @@ import { getTodayDateString, getCurrentTimeString } from '../services/dataServic
 import { PlusIcon, PencilIcon, TrashIcon } from '../constants';
 import AttendanceModal from './modals/AttendanceModal';
 import { supabase } from '../services/supabase';
+import { useAuth } from './auth/Auth';
 
 const DailyReport: React.FC = () => {
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(getTodayDateString());
   const [selectedClass, setSelectedClass] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -170,10 +172,12 @@ const DailyReport: React.FC = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <CardTitle>Laporan Absensi Harian</CardTitle>
           <div className="flex gap-2 w-full sm:w-auto">
-            <button onClick={() => handleOpenModal(null)} className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition">
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Tambah
-            </button>
+            {user?.role === 'admin' && (
+              <button onClick={() => handleOpenModal(null)} className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition">
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Tambah
+              </button>
+            )}
             <button onClick={exportToCSV} className="flex-1 sm:flex-none px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition">
               Export
             </button>
@@ -205,7 +209,7 @@ const DailyReport: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jam Masuk</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                  {user?.role === 'admin' && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -222,14 +226,16 @@ const DailyReport: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.checkIn || '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate max-w-xs">{record.notes || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end items-center gap-2">
-                        <button onClick={() => handleOpenModal(record)} className="p-2 text-primary-600 hover:text-primary-900 hover:bg-gray-100 rounded-full"><PencilIcon className="h-4 w-4"/></button>
-                        { record.id &&
-                            <button onClick={() => handleDelete(record.id!)} className="p-2 text-red-600 hover:text-red-900 hover:bg-gray-100 rounded-full"><TrashIcon className="h-4 w-4"/></button>
-                        }
-                      </div>
-                    </td>
+                    {user?.role === 'admin' && (
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end items-center gap-2">
+                            <button onClick={() => handleOpenModal(record)} className="p-2 text-primary-600 hover:text-primary-900 hover:bg-gray-100 rounded-full"><PencilIcon className="h-4 w-4"/></button>
+                            { 'id' in record && record.id &&
+                                <button onClick={() => handleDelete(record.id!)} className="p-2 text-red-600 hover:text-red-900 hover:bg-gray-100 rounded-full"><TrashIcon className="h-4 w-4"/></button>
+                            }
+                        </div>
+                        </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -253,12 +259,14 @@ const DailyReport: React.FC = () => {
                   <p><strong className="text-gray-600">Jam Masuk:</strong> {record.checkIn || '-'}</p>
                   <p><strong className="text-gray-600">Keterangan:</strong> {record.notes || '-'}</p>
                 </div>
-                <div className="mt-4 flex justify-end items-center gap-2 border-t pt-2">
-                    <button onClick={() => handleOpenModal(record)} className="p-2 text-primary-600 hover:bg-gray-100 rounded-full"><PencilIcon className="h-5 w-5"/></button>
-                    { record.id &&
-                        <button onClick={() => handleDelete(record.id!)} className="p-2 text-red-600 hover:bg-gray-100 rounded-full"><TrashIcon className="h-5 w-5"/></button>
-                    }
-                </div>
+                {user?.role === 'admin' && (
+                    <div className="mt-4 flex justify-end items-center gap-2 border-t pt-2">
+                        <button onClick={() => handleOpenModal(record)} className="p-2 text-primary-600 hover:bg-gray-100 rounded-full"><PencilIcon className="h-5 w-5"/></button>
+                        { 'id' in record && record.id &&
+                            <button onClick={() => handleDelete(record.id!)} className="p-2 text-red-600 hover:bg-gray-100 rounded-full"><TrashIcon className="h-5 w-5"/></button>
+                        }
+                    </div>
+                )}
               </div>
             ))}
           </div>

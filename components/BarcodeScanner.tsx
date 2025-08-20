@@ -25,7 +25,11 @@ const BarcodeScanner: React.FC = () => {
 
   useEffect(() => {
     const fetchSettings = async () => {
-        const { data } = await supabase.from('app_settings').select('*').eq('id', 1).single();
+        const { data, error } = await supabase.from('app_settings').select('*').eq('id', 1).single();
+        if (error) {
+            console.error("Error fetching app settings:", error);
+            return;
+        }
         if (data) {
             setSettings({
                 entryTime: data.entry_time,
@@ -67,7 +71,7 @@ const BarcodeScanner: React.FC = () => {
             photoUrl: studentData.photo_url || `https://picsum.photos/seed/${studentData.id}/200`
         };
 
-        const studentClass: Class | undefined = studentData.classes ? { id: studentData.classes.id, name: studentData.classes.name } : undefined;
+        const studentClass: Class | undefined = studentData.classes ? { id: (studentData.classes as any).id, name: (studentData.classes as any).name } : undefined;
 
         // 2. Check for existing attendance
         const { data: existingRecord, error: existingError } = await supabase
