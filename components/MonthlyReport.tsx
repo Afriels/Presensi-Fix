@@ -1,20 +1,20 @@
-
-import React, { useState, useMemo } from 'react';
-import useLocalStorage from '../hooks/useLocalStorage';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Student, Class, AttendanceRecord, AttendanceStatus } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
 import { PencilIcon, TrashIcon, PlusIcon } from '../constants';
 import AttendanceModal from './modals/AttendanceModal';
 import { getCurrentTimeString, getTodayDateString } from '../services/dataService';
+import { supabase } from '../services/supabase';
 
 const MonthlyReport: React.FC = () => {
     const today = new Date();
     const [selectedMonth, setSelectedMonth] = useState(`${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`);
     const [selectedClass, setSelectedClass] = useState('all');
     
-    const [students] = useLocalStorage<Student[]>('students', []);
-    const [classes] = useLocalStorage<Class[]>('classes', []);
-    const [attendance, setAttendance] = useLocalStorage<AttendanceRecord[]>('attendance', []);
+    const [students, setStudents] = useState<Student[]>([]);
+    const [classes, setClasses] = useState<Class[]>([]);
+    const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+    const [loading, setLoading] = useState(true);
     
     const [detailModalStudent, setDetailModalStudent] = useState<Student | null>(null);
     const [isCrudModalOpen, setIsCrudModalOpen] = useState(false);
@@ -22,31 +22,52 @@ const MonthlyReport: React.FC = () => {
 
     const classMap = useMemo(() => new Map(classes.map(c => [c.id, c.name])), [classes]);
 
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [studentsRes, classesRes, attendanceRes] = await Promise.all([
+                supabase.from('students').select('*'),
+                supabase.from('classes').select('*'),
+                supabase.from('attendance_records').select('*').like('date', `${selectedMonth}-%`)
+            ]);
+
+            if (studentsRes.error) throw studentsRes.error;
+            if (classesRes.error) throw classesRes.error;
+            if (attendanceRes.error) throw attendanceRes.error;
+
+            setStudents((studentsRes.data || []).map(s => ({ id: s.id, name: s.name, classId: s.class_id, photoUrl: s.photo_url || '' })));
+            setClasses(classesRes.data || []);
+            setAttendance((attendanceRes.data || []).map(a => ({
+                id: a.id, studentId: a.student_id, date: a.date, checkIn: a.check_in, checkOut: a.check_out, status: a.status as AttendanceStatus, notes: a.notes || undefined
+            })));
+        } catch (err) {
+            console.error("Error fetching monthly report data:", err);
+            alert("Gagal memuat data laporan bulanan.");
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedMonth]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
     const reportData = useMemo(() => {
         const filteredStudents = selectedClass === 'all'
             ? students
             : students.filter(s => s.classId === selectedClass);
         
         return filteredStudents.map(student => {
-            const studentAttendance = attendance.filter(
-                a => a.studentId === student.id && a.date.startsWith(selectedMonth)
-            );
-            
+            const studentAttendance = attendance.filter(a => a.studentId === student.id);
             const summary = {
                 [AttendanceStatus.HADIR]: studentAttendance.filter(a => a.status === AttendanceStatus.HADIR).length,
                 [AttendanceStatus.TERLAMBAT]: studentAttendance.filter(a => a.status === AttendanceStatus.TERLAMBAT).length,
                 [AttendanceStatus.SAKIT]: studentAttendance.filter(a => a.status === AttendanceStatus.SAKIT).length,
                 [AttendanceStatus.IJIN]: studentAttendance.filter(a => a.status === AttendanceStatus.IJIN).length,
-                [AttendanceStatus.ALPA]: 0 // Alpa is calculated differently if needed, here we just count records
             };
-            
             return { student, summary };
-        }).sort((a, b) => {
-            const nameComparison = a.student.name.localeCompare(b.student.name);
-            if (nameComparison !== 0) return nameComparison;
-            return a.student.id.localeCompare(b.student.id);
-        });
-    }, [selectedMonth, selectedClass, students, attendance]);
+        }).sort((a, b) => a.student.name.localeCompare(b.student.name));
+    }, [selectedClass, students, attendance]);
 
     const handleOpenCrudModal = (record: Partial<AttendanceRecord> | null) => {
         if (record) {
@@ -67,29 +88,35 @@ const MonthlyReport: React.FC = () => {
         setEditingRecord(null);
     };
 
-    const handleSave = (recordToSave: Partial<AttendanceRecord>) => {
-        setAttendance(prev => {
-            const existingIndex = prev.findIndex(r => r.id === recordToSave.id);
-            if (existingIndex > -1) {
-                const updated = [...prev];
-                updated[existingIndex] = { ...updated[existingIndex], ...recordToSave } as AttendanceRecord;
-                return updated;
-            } else {
-                const otherRecords = prev.filter(r => !(r.studentId === recordToSave.studentId && r.date === recordToSave.date));
-                const newRecord: AttendanceRecord = {
-                    id: `att-${recordToSave.studentId}-${recordToSave.date}-${Date.now()}`,
-                    checkOut: null,
-                    ...recordToSave
-                } as AttendanceRecord;
-                return [...otherRecords, newRecord];
+    const handleSave = async (recordToSave: Partial<AttendanceRecord>) => {
+        try {
+            if (recordToSave.id) { // Update
+                const { error } = await supabase.from('attendance_records').update({
+                    date: recordToSave.date, status: recordToSave.status, check_in: recordToSave.checkIn, notes: recordToSave.notes
+                }).eq('id', recordToSave.id);
+                if (error) throw error;
+            } else { // Insert
+                const { error } = await supabase.from('attendance_records').insert({
+                    student_id: recordToSave.studentId!, date: recordToSave.date!, status: recordToSave.status!, check_in: recordToSave.checkIn, notes: recordToSave.notes
+                });
+                if (error) throw error;
             }
-        });
-        handleCloseCrudModal();
+            fetchData(); // Refresh all monthly data
+            handleCloseCrudModal();
+        } catch (err: any) {
+            alert("Gagal menyimpan data: " + err.message);
+        }
     };
 
-    const handleDelete = (recordId: string) => {
+    const handleDelete = async (recordId: number) => {
         if (window.confirm('Apakah Anda yakin ingin menghapus data absensi ini?')) {
-            setAttendance(prev => prev.filter(r => r.id !== recordId));
+            try {
+                const { error } = await supabase.from('attendance_records').delete().eq('id', recordId);
+                if (error) throw error;
+                setAttendance(prev => prev.filter(r => r.id !== recordId));
+            } catch (err: any) {
+                alert("Gagal menghapus data: " + err.message);
+            }
         }
     };
     
@@ -143,59 +170,63 @@ const MonthlyReport: React.FC = () => {
                 </div>
             </div>
             
-            {/* Desktop Table View */}
-            <div className="overflow-x-auto hidden md:block">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Siswa</th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Hadir</th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Terlambat</th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sakit</th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ijin</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {reportData.map(({ student, summary }) => (
-                            <tr key={student.id}>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                                    <div className="text-sm text-gray-500">NIS: {student.id} | {classMap.get(student.classId)}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-green-600">{summary[AttendanceStatus.HADIR]}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-yellow-600">{summary[AttendanceStatus.TERLAMBAT]}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-orange-600">{summary[AttendanceStatus.SAKIT]}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-blue-600">{summary[AttendanceStatus.IJIN]}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button onClick={() => setDetailModalStudent(student)} className="text-primary-600 hover:text-primary-900">Detail</button>
-                                </td>
+            {loading ? <p className="text-center py-4">Memuat data rekap...</p> : (
+                <>
+                {/* Desktop Table View */}
+                <div className="overflow-x-auto hidden md:block">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Siswa</th>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Hadir</th>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Terlambat</th>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sakit</th>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ijin</th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {reportData.map(({ student, summary }) => (
+                                <tr key={student.id}>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                                        <div className="text-sm text-gray-500">NIS: {student.id} | {classMap.get(student.classId)}</div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-green-600">{summary[AttendanceStatus.HADIR]}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-yellow-600">{summary[AttendanceStatus.TERLAMBAT]}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-orange-600">{summary[AttendanceStatus.SAKIT]}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-blue-600">{summary[AttendanceStatus.IJIN]}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <button onClick={() => setDetailModalStudent(student)} className="text-primary-600 hover:text-primary-900">Detail</button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
 
-            {/* Mobile Card View */}
-            <div className="md:hidden space-y-4">
-                {reportData.map(({ student, summary }) => (
-                    <div key={student.id} className="bg-white p-4 rounded-lg shadow">
-                         <div>
-                            <p className="font-bold text-gray-800">{student.name}</p>
-                            <p className="text-sm text-gray-500">NIS: {student.id} | {classMap.get(student.classId)}</p>
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-4">
+                    {reportData.map(({ student, summary }) => (
+                        <div key={student.id} className="bg-white p-4 rounded-lg shadow">
+                            <div>
+                                <p className="font-bold text-gray-800">{student.name}</p>
+                                <p className="text-sm text-gray-500">NIS: {student.id} | {classMap.get(student.classId)}</p>
+                            </div>
+                            <div className="mt-4 grid grid-cols-2 gap-4 text-center border-t pt-4">
+                                <div><p className="text-xs text-gray-500">Hadir</p><p className="font-bold text-lg text-green-600">{summary[AttendanceStatus.HADIR]}</p></div>
+                                <div><p className="text-xs text-gray-500">Terlambat</p><p className="font-bold text-lg text-yellow-600">{summary[AttendanceStatus.TERLAMBAT]}</p></div>
+                                <div><p className="text-xs text-gray-500">Sakit</p><p className="font-bold text-lg text-orange-600">{summary[AttendanceStatus.SAKIT]}</p></div>
+                                <div><p className="text-xs text-gray-500">Ijin</p><p className="font-bold text-lg text-blue-600">{summary[AttendanceStatus.IJIN]}</p></div>
+                            </div>
+                            <div className="mt-4 border-t pt-2 text-right">
+                                <button onClick={() => setDetailModalStudent(student)} className="px-3 py-1 text-sm bg-primary-100 text-primary-700 rounded-md hover:bg-primary-200">Lihat Detail</button>
+                            </div>
                         </div>
-                        <div className="mt-4 grid grid-cols-2 gap-4 text-center border-t pt-4">
-                            <div><p className="text-xs text-gray-500">Hadir</p><p className="font-bold text-lg text-green-600">{summary[AttendanceStatus.HADIR]}</p></div>
-                            <div><p className="text-xs text-gray-500">Terlambat</p><p className="font-bold text-lg text-yellow-600">{summary[AttendanceStatus.TERLAMBAT]}</p></div>
-                            <div><p className="text-xs text-gray-500">Sakit</p><p className="font-bold text-lg text-orange-600">{summary[AttendanceStatus.SAKIT]}</p></div>
-                            <div><p className="text-xs text-gray-500">Ijin</p><p className="font-bold text-lg text-blue-600">{summary[AttendanceStatus.IJIN]}</p></div>
-                        </div>
-                        <div className="mt-4 border-t pt-2 text-right">
-                             <button onClick={() => setDetailModalStudent(student)} className="px-3 py-1 text-sm bg-primary-100 text-primary-700 rounded-md hover:bg-primary-200">Lihat Detail</button>
-                        </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            </>
+            )}
 
             {detailModalStudent && (
                 <StudentDetailModal
@@ -230,15 +261,15 @@ interface StudentDetailModalProps {
   onClose: () => void;
   onEdit: (record: AttendanceRecord) => void;
   onAdd: () => void;
-  onDelete: (recordId: string) => void;
+  onDelete: (recordId: number) => void;
 }
 
 const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student, month, attendance, onClose, onEdit, onAdd, onDelete }) => {
   const studentMonthlyAttendance = useMemo(() => {
     return attendance
-      .filter(a => a.studentId === student.id && a.date.startsWith(month))
+      .filter(a => a.studentId === student.id) // Already filtered by month in parent
       .sort((a, b) => a.date.localeCompare(b.date));
-  }, [student.id, month, attendance]);
+  }, [student.id, attendance]);
 
   const getStatusColor = (status: AttendanceStatus) => {
     switch(status) {

@@ -1,11 +1,10 @@
-
-import React, { useState, useMemo } from 'react';
-import useLocalStorage from '../hooks/useLocalStorage';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Student, Class, AttendanceRecord, AttendanceStatus } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
 import { getTodayDateString, getCurrentTimeString } from '../services/dataService';
 import { PlusIcon, PencilIcon, TrashIcon } from '../constants';
 import AttendanceModal from './modals/AttendanceModal';
+import { supabase } from '../services/supabase';
 
 const DailyReport: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(getTodayDateString());
@@ -13,40 +12,62 @@ const DailyReport: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<Partial<AttendanceRecord> | null>(null);
 
-  const [students] = useLocalStorage<Student[]>('students', []);
-  const [classes] = useLocalStorage<Class[]>('classes', []);
-  const [attendance, setAttendance] = useLocalStorage<AttendanceRecord[]>('attendance', []);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const classMap = useMemo(() => new Map(classes.map(c => [c.id, c.name])), [classes]);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [studentsRes, classesRes, attendanceRes] = await Promise.all([
+        supabase.from('students').select('*'),
+        supabase.from('classes').select('*'),
+        supabase.from('attendance_records').select('*').eq('date', selectedDate)
+      ]);
+      if (studentsRes.error) throw studentsRes.error;
+      if (classesRes.error) throw classesRes.error;
+      if (attendanceRes.error) throw attendanceRes.error;
+
+      setStudents((studentsRes.data || []).map(s => ({ id: s.id, name: s.name, classId: s.class_id, photoUrl: s.photo_url || '' })));
+      setClasses(classesRes.data || []);
+      setAttendance((attendanceRes.data || []).map(a => ({
+        id: a.id, studentId: a.student_id, date: a.date, checkIn: a.check_in, checkOut: a.check_out, status: a.status as AttendanceStatus, notes: a.notes || undefined
+      })));
+
+    } catch (err) {
+      console.error("Error fetching daily report data:", err);
+      alert('Gagal memuat data laporan harian.');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedDate]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const reportData = useMemo(() => {
     const filteredStudents = selectedClass === 'all'
       ? students
       : students.filter(s => s.classId === selectedClass);
     
-    const attendanceForDate = new Map(
-        attendance
-            .filter(a => a.date === selectedDate)
-            .map(a => [a.studentId, a])
-    );
+    const attendanceForDate = new Map(attendance.map(a => [a.studentId, a]));
     
     return filteredStudents.map(student => {
       const record = attendanceForDate.get(student.id);
       return {
         student,
-        record: record || { id: `placeholder-${student.id}`, studentId: student.id, date: selectedDate, status: AttendanceStatus.ALPA, checkIn: null, checkOut: null, notes: 'Tanpa Keterangan' }
+        record: record || { studentId: student.id, date: selectedDate, status: AttendanceStatus.ALPA, checkIn: null, checkOut: null, notes: 'Tanpa Keterangan' }
       };
-    }).sort((a, b) => {
-        const nameComparison = a.student.name.localeCompare(b.student.name);
-        if (nameComparison !== 0) return nameComparison;
-        return a.student.id.localeCompare(b.student.id);
-    });
-
-  }, [selectedDate, selectedClass, students, attendance]);
+    }).sort((a, b) => a.student.name.localeCompare(b.student.name));
+  }, [selectedClass, students, attendance, selectedDate]);
   
   const handleOpenModal = (record: Partial<AttendanceRecord> | null) => {
     if (record) {
-      if(record.id?.startsWith('placeholder-')) {
+      if(!record.id) { // This is a placeholder for an 'ALPA' student
           setEditingRecord({
               studentId: record.studentId,
               date: selectedDate,
@@ -67,30 +88,42 @@ const DailyReport: React.FC = () => {
     setEditingRecord(null);
   };
 
-  const handleSave = (recordToSave: Partial<AttendanceRecord>) => {
-    setAttendance(prev => {
-      const existingIndex = prev.findIndex(r => r.id === recordToSave.id);
-      
-      if (existingIndex > -1) {
-        const updated = [...prev];
-        updated[existingIndex] = { ...updated[existingIndex], ...recordToSave } as AttendanceRecord;
-        return updated;
-      } else {
-        const otherRecords = prev.filter(r => !(r.studentId === recordToSave.studentId && r.date === recordToSave.date));
-        const newRecord: AttendanceRecord = {
-          id: `att-${recordToSave.studentId}-${recordToSave.date}-${Date.now()}`,
-          checkOut: null,
-          ...recordToSave
-        } as AttendanceRecord;
-        return [...otherRecords, newRecord];
+  const handleSave = async (recordToSave: Partial<AttendanceRecord>) => {
+    try {
+      if (recordToSave.id) { // Update
+        const { error } = await supabase.from('attendance_records').update({
+          date: recordToSave.date,
+          status: recordToSave.status,
+          check_in: recordToSave.checkIn,
+          notes: recordToSave.notes
+        }).eq('id', recordToSave.id);
+        if (error) throw error;
+      } else { // Insert
+        const { error } = await supabase.from('attendance_records').insert({
+          student_id: recordToSave.studentId!,
+          date: recordToSave.date!,
+          status: recordToSave.status!,
+          check_in: recordToSave.checkIn,
+          notes: recordToSave.notes
+        });
+        if (error) throw error;
       }
-    });
-    handleCloseModal();
+      fetchData(); // Refresh data
+      handleCloseModal();
+    } catch (err: any) {
+      alert("Gagal menyimpan data: " + err.message);
+    }
   };
 
-  const handleDelete = (recordId: string) => {
+  const handleDelete = async (recordId: number) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus data absensi ini?')) {
-      setAttendance(prev => prev.filter(r => r.id !== recordId));
+      try {
+        const { error } = await supabase.from('attendance_records').delete().eq('id', recordId);
+        if (error) throw error;
+        setAttendance(prev => prev.filter(r => r.id !== recordId)); // Optimistic UI update
+      } catch (err: any) {
+        alert("Gagal menghapus data: " + err.message);
+      }
     }
   };
 
@@ -161,72 +194,76 @@ const DailyReport: React.FC = () => {
         </div>
       </div>
 
-      {/* Desktop Table View */}
-      <div className="overflow-x-auto hidden md:block">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Siswa</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jam Masuk</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {reportData.map(({ student, record }) => (
-              <tr key={student.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                    <div className="text-sm text-gray-500">NIS: {student.id} | {classMap.get(student.classId)}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(record.status)}`}>
-                    {record.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.checkIn || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate max-w-xs">{record.notes || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex justify-end items-center gap-2">
-                    <button onClick={() => handleOpenModal(record)} className="p-2 text-primary-600 hover:text-primary-900 hover:bg-gray-100 rounded-full"><PencilIcon className="h-4 w-4"/></button>
-                    { !record.id.startsWith('placeholder-') &&
-                        <button onClick={() => handleDelete(record.id)} className="p-2 text-red-600 hover:text-red-900 hover:bg-gray-100 rounded-full"><TrashIcon className="h-4 w-4"/></button>
-                    }
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      
-      {/* Mobile Card View */}
-      <div className="md:hidden space-y-4">
-        {reportData.map(({ student, record }) => (
-          <div key={student.id} className="bg-white p-4 rounded-lg shadow">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="font-bold text-gray-800">{student.name}</p>
-                <p className="text-sm text-gray-500">NIS: {student.id} | {classMap.get(student.classId)}</p>
-              </div>
-               <span className={`px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusColor(record.status)}`}>
-                    {record.status}
-                </span>
-            </div>
-            <div className="mt-4 border-t pt-4 space-y-2 text-sm">
-               <p><strong className="text-gray-600">Jam Masuk:</strong> {record.checkIn || '-'}</p>
-               <p><strong className="text-gray-600">Keterangan:</strong> {record.notes || '-'}</p>
-            </div>
-            <div className="mt-4 flex justify-end items-center gap-2 border-t pt-2">
-                <button onClick={() => handleOpenModal(record)} className="p-2 text-primary-600 hover:bg-gray-100 rounded-full"><PencilIcon className="h-5 w-5"/></button>
-                { !record.id.startsWith('placeholder-') &&
-                    <button onClick={() => handleDelete(record.id)} className="p-2 text-red-600 hover:bg-gray-100 rounded-full"><TrashIcon className="h-5 w-5"/></button>
-                }
-            </div>
+      {loading ? <p className="text-center py-4">Memuat data laporan...</p> : (
+        <>
+          {/* Desktop Table View */}
+          <div className="overflow-x-auto hidden md:block">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Siswa</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jam Masuk</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {reportData.map(({ student, record }) => (
+                  <tr key={student.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                        <div className="text-sm text-gray-500">NIS: {student.id} | {classMap.get(student.classId)}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(record.status)}`}>
+                        {record.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.checkIn || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate max-w-xs">{record.notes || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end items-center gap-2">
+                        <button onClick={() => handleOpenModal(record)} className="p-2 text-primary-600 hover:text-primary-900 hover:bg-gray-100 rounded-full"><PencilIcon className="h-4 w-4"/></button>
+                        { record.id &&
+                            <button onClick={() => handleDelete(record.id!)} className="p-2 text-red-600 hover:text-red-900 hover:bg-gray-100 rounded-full"><TrashIcon className="h-4 w-4"/></button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
+          
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-4">
+            {reportData.map(({ student, record }) => (
+              <div key={student.id} className="bg-white p-4 rounded-lg shadow">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-bold text-gray-800">{student.name}</p>
+                    <p className="text-sm text-gray-500">NIS: {student.id} | {classMap.get(student.classId)}</p>
+                  </div>
+                  <span className={`px-2 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusColor(record.status)}`}>
+                        {record.status}
+                    </span>
+                </div>
+                <div className="mt-4 border-t pt-4 space-y-2 text-sm">
+                  <p><strong className="text-gray-600">Jam Masuk:</strong> {record.checkIn || '-'}</p>
+                  <p><strong className="text-gray-600">Keterangan:</strong> {record.notes || '-'}</p>
+                </div>
+                <div className="mt-4 flex justify-end items-center gap-2 border-t pt-2">
+                    <button onClick={() => handleOpenModal(record)} className="p-2 text-primary-600 hover:bg-gray-100 rounded-full"><PencilIcon className="h-5 w-5"/></button>
+                    { record.id &&
+                        <button onClick={() => handleDelete(record.id!)} className="p-2 text-red-600 hover:bg-gray-100 rounded-full"><TrashIcon className="h-5 w-5"/></button>
+                    }
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {isModalOpen && <AttendanceModal record={editingRecord} students={students} onClose={handleCloseModal} onSave={handleSave} />}
     </Card>

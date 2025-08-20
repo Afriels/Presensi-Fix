@@ -1,6 +1,4 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
-import useLocalStorage from '../hooks/useLocalStorage';
 import { AppSettings, Class, AcademicYear } from '../types';
 import Card from './ui/Card';
 import { PencilIcon, TrashIcon } from '../constants';
@@ -48,38 +46,55 @@ const TabButton: React.FC<{ name: string; tab: Tab; activeTab: Tab; setActiveTab
 );
 
 const IdentitySettings: React.FC = () => {
-    const [settings, setSettings] = useLocalStorage<AppSettings>('app_settings', {
-        entryTime: '07:00',
-        lateTime: '07:15',
-        exitTime: '15:00',
-        appName: 'Aplikasi Absensi Siswa',
-        schoolName: 'SEKOLAH HARAPAN BANGSA',
-    });
-    const [localSettings, setLocalSettings] = useState(settings);
+    const [settings, setSettings] = useState<Partial<AppSettings>>({});
     const [message, setMessage] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            setLoading(true);
+            const { data, error } = await supabase.from('app_settings').select('*').eq('id', 1).single();
+            if (data) {
+                setSettings({ appName: data.app_name || '', schoolName: data.school_name || ''});
+            }
+            setLoading(false);
+        };
+        fetchSettings();
+    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setLocalSettings(prev => ({...prev, [e.target.name]: e.target.value}));
+        setSettings(prev => ({...prev, [e.target.name]: e.target.value}));
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        setSettings(localSettings);
-        setMessage('Pengaturan identitas berhasil disimpan!');
-        setTimeout(() => setMessage(''), 3000);
+        try {
+            const { error } = await supabase.from('app_settings').update({
+                app_name: settings.appName,
+                school_name: settings.schoolName
+            }).eq('id', 1);
+            if (error) throw error;
+
+            setMessage('Pengaturan identitas berhasil disimpan!');
+            setTimeout(() => setMessage(''), 3000);
+        } catch (err: any) {
+            alert('Gagal menyimpan pengaturan: ' + err.message);
+        }
     };
     
+    if (loading) return <p>Memuat pengaturan...</p>;
+
     return (
         <Card className="max-w-md">
             <h3 className="text-lg font-semibold mb-4">Atur Identitas Aplikasi & Sekolah</h3>
             <form onSubmit={handleSave} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Nama Aplikasi</label>
-                    <input type="text" name="appName" value={localSettings.appName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" />
+                    <input type="text" name="appName" value={settings.appName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" />
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-700">Nama Sekolah</label>
-                    <input type="text" name="schoolName" value={localSettings.schoolName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" />
+                    <input type="text" name="schoolName" value={settings.schoolName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" />
                 </div>
                 <div className="flex justify-end">
                     <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Simpan Perubahan</button>
@@ -91,12 +106,42 @@ const IdentitySettings: React.FC = () => {
 };
 
 const TimeSettings: React.FC = () => {
-    const [settings, setSettings] = useLocalStorage<AppSettings>('app_settings', { entryTime: '07:00', lateTime: '07:15', exitTime: '15:00' });
+    const [settings, setSettings] = useState<Partial<AppSettings>>({ entryTime: '07:00', lateTime: '07:15', exitTime: '15:00' });
+    const [message, setMessage] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    const fetchSettings = useCallback(async () => {
+        setLoading(true);
+        const { data } = await supabase.from('app_settings').select('entry_time, late_time, exit_time').eq('id', 1).single();
+        if (data) {
+            setSettings({ entryTime: data.entry_time, lateTime: data.late_time, exitTime: data.exit_time });
+        }
+        setLoading(false);
+    }, []);
+
+    useEffect(() => { fetchSettings() }, [fetchSettings]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSettings(prev => ({...prev, [e.target.name]: e.target.value}));
     };
+
+    const handleSave = async () => {
+        try {
+             const { error } = await supabase.from('app_settings').update({
+                entry_time: settings.entryTime,
+                late_time: settings.lateTime,
+                exit_time: settings.exitTime
+            }).eq('id', 1);
+            if (error) throw error;
+            setMessage('Pengaturan jam berhasil disimpan!');
+            setTimeout(() => setMessage(''), 3000);
+        } catch (err: any) {
+             alert('Gagal menyimpan pengaturan: ' + err.message);
+        }
+    }
     
+    if (loading) return <p>Memuat pengaturan...</p>;
+
     return (
         <Card className="max-w-md">
             <h3 className="text-lg font-semibold mb-4">Atur Jam Masuk dan Pulang</h3>
@@ -114,6 +159,10 @@ const TimeSettings: React.FC = () => {
                     <input type="time" name="exitTime" value={settings.exitTime} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" />
                 </div>
             </div>
+             <div className="flex justify-end mt-4">
+                <button onClick={handleSave} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Simpan Perubahan</button>
+            </div>
+            {message && <p className="mt-4 text-sm text-green-600">{message}</p>}
         </Card>
     );
 };
@@ -147,7 +196,7 @@ const ClassManagement: React.FC = () => {
         if (newClassName.trim()) {
             try {
                 const newClass = { id: `cls-${Date.now()}`, name: newClassName.trim() };
-                const { error } = await supabase.from('classes').insert(newClass);
+                const { error } = await supabase.from('classes').insert(newClass).select().single();
                 if (error) throw error;
                 setClasses(prev => [...prev, newClass].sort((a,b) => a.name.localeCompare(b.name)));
                 setNewClassName('');
@@ -194,12 +243,32 @@ const ClassManagement: React.FC = () => {
 };
 
 const AcademicYearManagement: React.FC = () => {
-    const [years, setYears] = useLocalStorage<AcademicYear[]>('academic_years', []);
+    const [years, setYears] = useState<AcademicYear[]>([]);
+    const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingYear, setEditingYear] = useState<AcademicYear | null>(null);
 
-    const setActiveYear = (id: string) => {
-        setYears(years.map(y => ({ ...y, isActive: y.id === id })));
+    const fetchYears = useCallback(async () => {
+        setLoading(true);
+        const { data, error } = await supabase.from('academic_years').select('*').order('year', { ascending: false });
+        if (data) setYears(data.map(y => ({...y, semester: y.semester as 'Ganjil' | 'Genap'})));
+        setLoading(false);
+    }, []);
+    
+    useEffect(() => { fetchYears() }, [fetchYears]);
+
+    const setActiveYear = async (id: number) => {
+        try {
+            // Set all to inactive
+            const { error: errorInactive } = await supabase.from('academic_years').update({ is_active: false }).eq('is_active', true);
+            if (errorInactive) throw errorInactive;
+            // Set selected to active
+            const { error: errorActive } = await supabase.from('academic_years').update({ is_active: true }).eq('id', id);
+            if(errorActive) throw errorActive;
+            fetchYears();
+        } catch (err: any) {
+            alert('Gagal mengaktifkan tahun ajaran: ' + err.message);
+        }
     };
 
     const handleOpenModal = (year: AcademicYear | null) => {
@@ -212,21 +281,36 @@ const AcademicYearManagement: React.FC = () => {
         setEditingYear(null);
     };
 
-    const handleSave = (yearToSave: AcademicYear) => {
-        if (editingYear) {
-            setYears(years.map(y => y.id === yearToSave.id ? yearToSave : y));
-        } else {
-            setYears([...years, { ...yearToSave, id: Date.now().toString(), isActive: years.length === 0 }]);
+    const handleSave = async (yearToSave: Partial<AcademicYear>) => {
+        try {
+            if (editingYear) {
+                const { error } = await supabase.from('academic_years').update({ year: yearToSave.year, semester: yearToSave.semester }).eq('id', editingYear.id);
+                if(error) throw error;
+            } else {
+                const { error } = await supabase.from('academic_years').insert({ year: yearToSave.year!, semester: yearToSave.semester!, is_active: years.length === 0 });
+                if(error) throw error;
+            }
+            fetchYears();
+            handleCloseModal();
+        } catch (err: any) {
+            alert('Gagal menyimpan data: ' + err.message);
         }
-        handleCloseModal();
     };
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: number) => {
         if (window.confirm('Apakah Anda yakin ingin menghapus tahun pelajaran ini?')) {
-            setYears(years.filter(y => y.id !== id));
+            try {
+                const { error } = await supabase.from('academic_years').delete().eq('id', id);
+                if(error) throw error;
+                setYears(years.filter(y => y.id !== id));
+            } catch (err: any) {
+                alert('Gagal menghapus data: ' + err.message);
+            }
         }
     };
     
+    if (loading) return <p>Memuat data...</p>;
+
     return (
         <Card className="max-w-lg">
             <div className="flex justify-between items-center mb-4">
@@ -258,7 +342,7 @@ const AcademicYearManagement: React.FC = () => {
 
 interface AcademicYearModalProps {
     year: AcademicYear | null;
-    onSave: (year: AcademicYear) => void;
+    onSave: (year: Partial<AcademicYear>) => void;
     onClose: () => void;
 }
 
@@ -273,7 +357,7 @@ const AcademicYearModal: React.FC<AcademicYearModalProps> = ({ year, onSave, onC
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (formData.year && formData.semester) {
-            onSave(formData as AcademicYear);
+            onSave(formData);
         }
     };
 
@@ -305,79 +389,18 @@ const AcademicYearModal: React.FC<AcademicYearModalProps> = ({ year, onSave, onC
 
 
 const SystemSettings: React.FC = () => {
-    const handleBackup = () => {
-        const dataToBackup = {
-            students: JSON.parse(localStorage.getItem('students') || '[]'),
-            classes: JSON.parse(localStorage.getItem('classes') || '[]'),
-            attendance: JSON.parse(localStorage.getItem('attendance') || '[]'),
-            settings: JSON.parse(localStorage.getItem('app_settings') || '{}'),
-            academic_years: JSON.parse(localStorage.getItem('academic_years') || '[]'),
-        };
-        const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(dataToBackup, null, 2))}`;
-        const link = document.createElement('a');
-        link.href = jsonString;
-        link.download = `backup_absensi_${new Date().toISOString().slice(0, 10)}.json`;
-        link.click();
-    };
-    
-    const handleRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const text = e.target?.result;
-                if (typeof text !== 'string') {
-                    throw new Error("File content is not readable.");
-                }
-                const data = JSON.parse(text);
-
-                // Basic validation
-                if (!data.students || !data.classes || !data.attendance || !data.settings || !data.academic_years) {
-                    throw new Error("Invalid backup file format.");
-                }
-
-                if (window.confirm('Apakah Anda yakin ingin memulihkan data? Ini akan menimpa semua data yang ada saat ini.')) {
-                    localStorage.setItem('students', JSON.stringify(data.students));
-                    localStorage.setItem('classes', JSON.stringify(data.classes));
-                    localStorage.setItem('attendance', JSON.stringify(data.attendance));
-                    localStorage.setItem('app_settings', JSON.stringify(data.settings));
-                    localStorage.setItem('academic_years', JSON.stringify(data.academic_years));
-                    
-                    alert('Data berhasil dipulihkan! Aplikasi akan dimuat ulang.');
-                    window.location.reload();
-                }
-            } catch (error) {
-                console.error("Failed to restore data:", error);
-                alert(`Gagal memulihkan data. Pastikan file backup valid. Error: ${error instanceof Error ? error.message : String(error)}`);
-            } finally {
-                // Reset the input value to allow re-uploading the same file
-                event.target.value = '';
-            }
-        };
-        reader.readAsText(file);
-    };
-
     return (
         <div className="space-y-6">
             <Card className="max-w-md">
-                <h3 className="text-lg font-semibold mb-4">Cadangkan Data (Lokal)</h3>
-                <p className="text-sm text-gray-600 mb-4">Simpan data dari LocalStorage (pengaturan, tahun ajaran, dll.) ke file JSON. Data siswa dan kelas tidak termasuk karena sudah di Supabase.</p>
-                <button onClick={handleBackup} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
-                    Download Backup Lokal
-                </button>
-            </Card>
-            <Card className="max-w-md">
-                <h3 className="text-lg font-semibold mb-4">Pulihkan Data (Lokal)</h3>
+                <h3 className="text-lg font-semibold mb-4">Penyimpanan Data</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                    Pulihkan data lokal dari file backup. 
-                    <strong className="text-red-600"> Perhatian:</strong> Hanya akan menimpa data pengaturan, tahun ajaran, dan data lokal lainnya.
+                    Seluruh data aplikasi ini (data siswa, absensi, kelas, dan pengaturan) sekarang 
+                    disimpan dengan aman di database cloud (Supabase).
                 </p>
-                <label className="cursor-pointer px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition inline-block">
-                    <span>Pilih File Backup</span>
-                    <input type="file" accept=".json" className="hidden" onChange={handleRestore} />
-                </label>
+                <p className="text-sm text-gray-600">
+                    Ini berarti Anda tidak perlu lagi melakukan backup manual. Data Anda akan selalu
+                    tersinkronisasi dan dapat diakses dari perangkat manapun.
+                </p>
             </Card>
         </div>
     );

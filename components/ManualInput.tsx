@@ -1,21 +1,28 @@
-
-import React, { useState } from 'react';
-import useLocalStorage from '../hooks/useLocalStorage';
+import React, { useState, useEffect } from 'react';
 import { Student, AttendanceRecord, AttendanceStatus } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
 import { getTodayDateString } from '../services/dataService';
+import { supabase } from '../services/supabase';
 
 const ManualInput: React.FC = () => {
+    const [students, setStudents] = useState<Student[]>([]);
     const [studentId, setStudentId] = useState('');
     const [date, setDate] = useState(getTodayDateString());
     const [status, setStatus] = useState<AttendanceStatus>(AttendanceStatus.IJIN);
     const [notes, setNotes] = useState('');
     const [message, setMessage] = useState<{ type: 'success' | 'error' | 'idle', text: string }>({ type: 'idle', text: '' });
     
-    const [students] = useLocalStorage<Student[]>('students', []);
-    const [attendance, setAttendance] = useLocalStorage<AttendanceRecord[]>('attendance', []);
+    useEffect(() => {
+        const fetchStudents = async () => {
+            const { data, error } = await supabase.from('students').select('id, name').order('name');
+            if (data) {
+                setStudents(data.map(s => ({...s, classId: '', photoUrl: ''}))); // classId and photoUrl not needed here
+            }
+        };
+        fetchStudents();
+    }, []);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!studentId) {
@@ -29,25 +36,40 @@ const ManualInput: React.FC = () => {
             return;
         }
 
-        const newRecord: AttendanceRecord = {
-            id: `att-${studentId}-${date}-${Math.random()}`, // Add random factor to avoid collision
-            studentId,
-            date,
-            checkIn: null,
-            checkOut: null,
-            status,
-            notes,
-        };
+        try {
+            // Upsert logic: check if a record for this student on this date exists, then insert or update.
+            const { data: existingRecord, error: fetchError } = await supabase
+                .from('attendance_records')
+                .select('id')
+                .eq('student_id', studentId)
+                .eq('date', date)
+                .maybeSingle();
 
-        setAttendance(prev => {
-            const otherRecords = prev.filter(r => !(r.studentId === studentId && r.date === date));
-            return [...otherRecords, newRecord];
-        });
+            if (fetchError) throw fetchError;
 
-        setMessage({ type: 'success', text: `Absensi untuk ${student.name} berhasil disimpan.` });
-        setStudentId('');
-        setNotes('');
-        setStatus(AttendanceStatus.IJIN);
+            const recordToUpsert = {
+                student_id: studentId,
+                date,
+                check_in: null,
+                check_out: null,
+                status,
+                notes,
+            };
+
+            const { error: upsertError } = await supabase.from('attendance_records').upsert(
+                existingRecord ? { ...recordToUpsert, id: existingRecord.id } : recordToUpsert
+            );
+
+            if (upsertError) throw upsertError;
+            
+            setMessage({ type: 'success', text: `Absensi untuk ${student.name} berhasil disimpan.` });
+            setStudentId('');
+            setNotes('');
+            setStatus(AttendanceStatus.IJIN);
+
+        } catch (err: any) {
+            setMessage({ type: 'error', text: `Gagal menyimpan data: ${err.message}` });
+        }
     };
 
     return (

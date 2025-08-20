@@ -1,9 +1,8 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { NAV_LINKS, SchoolIcon } from '../../constants';
-import useLocalStorage from '../../hooks/useLocalStorage';
 import { AppSettings } from '../../types';
+import { supabase } from '../../services/supabase';
 
 interface SidebarProps {
   isSidebarOpen: boolean;
@@ -11,13 +10,22 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, setIsSidebarOpen }) => {
-  const [settings] = useLocalStorage<AppSettings>('app_settings', {
-    entryTime: '07:00',
-    lateTime: '07:15',
-    exitTime: '15:00',
-    appName: 'Aplikasi Absensi Siswa',
-    schoolName: 'SEKOLAH HARAPAN BANGSA',
-  });
+  const [appName, setAppName] = useState('Aplikasi Absensi');
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('app_name')
+        .eq('id', 1)
+        .single();
+
+      if (data && data.app_name) {
+        setAppName(data.app_name);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   return (
     <div className={`
@@ -27,7 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, setIsSidebarOpen }) =>
     `}>
       <div className="flex items-center justify-center h-20 border-b px-4">
         <SchoolIcon className="h-8 w-8 text-primary-600 flex-shrink-0" />
-        <h1 className="text-xl font-bold text-gray-800 ml-2 truncate">{settings.appName}</h1>
+        <h1 className="text-xl font-bold text-gray-800 ml-2 truncate">{appName}</h1>
       </div>
       <nav className="mt-5">
         {NAV_LINKS.map((link) => (

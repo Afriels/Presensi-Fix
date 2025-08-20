@@ -1,6 +1,4 @@
-
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import useLocalStorage from '../hooks/useLocalStorage';
 import { Student, Class, AppSettings } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
 import QRCode from 'qrcode';
@@ -232,18 +230,21 @@ interface QRCodeModalProps {
 
 const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, onClose }) => {
     const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
-    const [settings] = useLocalStorage<AppSettings>('app_settings', {
-        entryTime: '07:00',
-        lateTime: '07:15',
-        exitTime: '15:00',
-        appName: 'Aplikasi Absensi Siswa',
-        schoolName: 'SEKOLAH HARAPAN BANGSA',
-    });
+    const [schoolName, setSchoolName] = useState('SEKOLAH ANDA');
 
     useEffect(() => {
         QRCode.toDataURL(student.id, { width: 256, margin: 1, errorCorrectionLevel: 'H' })
             .then(url => setQrCodeUrl(url))
             .catch(err => console.error("Failed to generate QR code", err));
+            
+        const fetchSchoolName = async () => {
+            const { data } = await supabase.from('app_settings').select('school_name').eq('id', 1).single();
+            if(data && data.school_name) {
+                setSchoolName(data.school_name);
+            }
+        };
+        fetchSchoolName();
+
     }, [student.id]);
 
     const handlePrint = () => {
@@ -278,7 +279,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, onClose }) => {
                 <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
                     <div className="printable-card bg-white p-4 border-2 border-gray-200 rounded-lg text-center font-sans">
                         <h2 className="text-xl font-bold text-gray-800">KARTU TANDA SISWA</h2>
-                        <p className="text-sm text-gray-500 mb-4 uppercase">{settings.schoolName}</p>
+                        <p className="text-sm text-gray-500 mb-4 uppercase">{schoolName}</p>
                         <img src={student.photoUrl} alt={student.name} className="w-32 h-32 rounded-full object-cover mx-auto border-4 border-primary-500 shadow-lg" />
                         <h3 className="text-2xl font-semibold mt-4">{student.name}</h3>
                         <p className="text-gray-600 text-lg">NIS: {student.id}</p>

@@ -1,4 +1,3 @@
-
 export enum AttendanceStatus {
   HADIR = 'Hadir',
   TERLAMBAT = 'Terlambat',
@@ -20,7 +19,7 @@ export interface Class {
 }
 
 export interface AttendanceRecord {
-  id: string;
+  id: number; // Changed from string to number to match Supabase bigint
   studentId: string;
   date: string; // YYYY-MM-DD
   checkIn: string | null; // HH:mm:ss
@@ -30,13 +29,14 @@ export interface AttendanceRecord {
 }
 
 export interface AcademicYear {
-    id: string;
+    id: number; // Changed from string to number
     year: string; // e.g., "2023/2024"
     semester: 'Ganjil' | 'Genap';
     isActive: boolean;
 }
 
 export interface AppSettings {
+    id?: number; // Should always be 1
     entryTime: string; // HH:mm
     lateTime: string; // HH:mm
     exitTime: string; // HH:mm

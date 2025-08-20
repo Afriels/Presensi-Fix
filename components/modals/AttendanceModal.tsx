@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { AttendanceRecord, Student, AttendanceStatus } from '../../types';
 
@@ -30,7 +29,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ record, students, onS
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
             <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-                <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">{record?.id && !record.id.startsWith('placeholder') ? 'Edit Absensi' : 'Tambah Absensi'}</h3>
+                <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">{record?.id ? 'Edit Absensi' : 'Tambah Absensi'}</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label htmlFor="studentId" className="block text-sm font-medium text-gray-700">Siswa</label>

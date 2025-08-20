@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 // Define the types for your database schema here.
@@ -11,19 +10,18 @@ export type Database = {
           id: string;
           name: string;
           class_id: string;
-          photo_url: string | null;
-          created_at: string;
+          photo_url: string;
         };
         Insert: {
           id: string;
           name: string;
           class_id: string;
-          photo_url?: string | null;
+          photo_url?: string;
         };
         Update: {
           name?: string;
           class_id?: string;
-          photo_url?: string | null;
+          photo_url?: string;
         };
         Relationships: [
           {
@@ -49,6 +47,92 @@ export type Database = {
         };
         Relationships: [];
       };
+      attendance_records: {
+        Row: {
+          id: number;
+          student_id: string;
+          date: string;
+          check_in: string | null;
+          check_out: string | null;
+          status: string;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          student_id: string;
+          date: string;
+          check_in?: string | null;
+          check_out?: string | null;
+          status: string;
+          notes?: string | null;
+        };
+        Update: {
+          student_id?: string;
+          date?: string;
+          check_in?: string | null;
+          check_out?: string | null;
+          status?: string;
+          notes?: string | null;
+        };
+        Relationships: [
+           {
+            foreignKeyName: "attendance_records_student_id_fkey",
+            columns: ["student_id"],
+            isOneToOne: false,
+            referencedRelation: "students",
+            referencedColumns: ["id"]
+          }
+        ];
+      };
+      app_settings: {
+        Row: {
+          id: number;
+          entry_time: string;
+          late_time: string;
+          exit_time: string;
+          app_name: string | null;
+          school_name: string | null;
+        };
+        Insert: {
+          id?: number;
+          entry_time: string;
+          late_time: string;
+          exit_time: string;
+          app_name?: string | null;
+          school_name?: string | null;
+        };
+        Update: {
+          id?: number;
+          entry_time?: string;
+          late_time?: string;
+          exit_time?: string;
+          app_name?: string | null;
+          school_name?: string | null;
+        };
+        Relationships: [];
+      };
+      academic_years: {
+        Row: {
+          id: number;
+          year: string;
+          semester: string;
+          is_active: boolean;
+        };
+        Insert: {
+          id?: number;
+          year: string;
+          semester: string;
+          is_active?: boolean;
+        };
+        Update: {
+          id?: number;
+          year?: string;
+          semester?: string;
+          is_active?: boolean;
+        };
+        Relationships: [];
+      }
     };
     Views: {
       [_ in never]: never;

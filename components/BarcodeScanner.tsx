@@ -1,13 +1,12 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import useLocalStorage from '../hooks/useLocalStorage';
-import { Student, AttendanceRecord, AttendanceStatus, AppSettings, Class } from '../types';
+import { Student, AttendanceStatus, AppSettings, Class } from '../types';
 import { getTodayDateString, getCurrentTimeString } from '../services/dataService';
 import Card from './ui/Card';
 import { SOUNDS } from '../constants';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import { supabase } from '../services/supabase';
 
-type ScanStatus = 'idle' | 'success' | 'error' | 'warning';
+type ScanStatus = 'idle' | 'success' | 'error' | 'warning' | 'loading';
 interface ScanResult {
     status: ScanStatus;
     message: string;
@@ -22,58 +21,96 @@ const BarcodeScanner: React.FC = () => {
   const [isScannerVisible, setIsScannerVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [students] = useLocalStorage<Student[]>('students', []);
-  const [classes] = useLocalStorage<Class[]>('classes', []);
-  const [attendance, setAttendance] = useLocalStorage<AttendanceRecord[]>('attendance', []);
-  const [settings] = useLocalStorage<AppSettings>('app_settings', { entryTime: '07:00', lateTime: '07:15', exitTime: '15:00' });
+  const [settings, setSettings] = useState<AppSettings>({ entryTime: '07:00', lateTime: '07:15', exitTime: '15:00' });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+        const { data } = await supabase.from('app_settings').select('*').eq('id', 1).single();
+        if (data) {
+            setSettings({
+                entryTime: data.entry_time,
+                lateTime: data.late_time,
+                exitTime: data.exit_time,
+            });
+        }
+    };
+    fetchSettings();
+  }, []);
   
   const playSound = (sound: string) => {
     new Audio(sound).play().catch(e => console.error("Error playing sound:", e));
   };
 
-  const handleScan = useCallback((id: string) => {
+  const handleScan = useCallback(async (id: string) => {
+    setScanResult({ status: 'loading', message: 'Memproses...' });
     const today = getTodayDateString();
     const currentTime = getCurrentTimeString();
-    const currentTimeDate = new Date(`${today}T${currentTime}`);
     
-    const student = students.find(s => s.id === id);
+    try {
+        // 1. Find student
+        const { data: studentData, error: studentError } = await supabase
+            .from('students')
+            .select(`*, classes (id, name)`)
+            .eq('id', id)
+            .single();
 
-    if (!student) {
-        setScanResult({ status: 'error', message: 'Nomor induk tidak terdaftar!' });
+        if (studentError || !studentData) {
+            setScanResult({ status: 'error', message: 'Nomor induk tidak terdaftar!' });
+            playSound(SOUNDS.ERROR);
+            return;
+        }
+
+        const student: Student = {
+            id: studentData.id,
+            name: studentData.name,
+            classId: studentData.class_id,
+            photoUrl: studentData.photo_url || `https://picsum.photos/seed/${studentData.id}/200`
+        };
+
+        const studentClass: Class | undefined = studentData.classes ? { id: studentData.classes.id, name: studentData.classes.name } : undefined;
+
+        // 2. Check for existing attendance
+        const { data: existingRecord, error: existingError } = await supabase
+            .from('attendance_records')
+            .select('check_in')
+            .eq('student_id', id)
+            .eq('date', today)
+            .maybeSingle();
+        
+        if (existingError) throw existingError;
+
+        if (existingRecord?.check_in) {
+            setScanResult({ status: 'warning', message: `Siswa sudah absen masuk pada jam ${existingRecord.check_in}.`, student, class: studentClass, time: existingRecord.check_in });
+            playSound(SOUNDS.WARNING);
+            return;
+        }
+
+        // 3. Determine status and create new record
+        const currentTimeDate = new Date(`${today}T${currentTime}`);
+        const lateTimeDate = new Date(`${today}T${settings.lateTime}:00`);
+        const status = currentTimeDate > lateTimeDate ? AttendanceStatus.TERLAMBAT : AttendanceStatus.HADIR;
+
+        const newRecord = {
+            student_id: id,
+            date: today,
+            check_in: currentTime,
+            check_out: null,
+            status: status,
+        };
+        
+        const { error: insertError } = await supabase.from('attendance_records').insert(newRecord);
+        if (insertError) throw insertError;
+        
+        setScanResult({ status: 'success', message: `Absensi berhasil: ${status}`, student, class: studentClass, time: currentTime });
+        playSound(SOUNDS.SUCCESS);
+
+    } catch (err: any) {
+        console.error("Error during scan handling:", err);
+        setScanResult({ status: 'error', message: 'Terjadi kesalahan: ' + err.message });
         playSound(SOUNDS.ERROR);
-        return;
     }
 
-    const studentClass = classes.find(c => c.id === student.classId);
-    
-    const existingRecord = attendance.find(a => a.studentId === id && a.date === today);
-    if (existingRecord?.checkIn) {
-        setScanResult({ status: 'warning', message: `Siswa sudah absen masuk pada jam ${existingRecord.checkIn}.`, student, class: studentClass, time: existingRecord.checkIn });
-        playSound(SOUNDS.WARNING);
-        return;
-    }
-
-    const lateTimeDate = new Date(`${today}T${settings.lateTime}:00`);
-    const status = currentTimeDate > lateTimeDate ? AttendanceStatus.TERLAMBAT : AttendanceStatus.HADIR;
-
-    const newRecord: AttendanceRecord = {
-        id: `att-${id}-${today}`,
-        studentId: id,
-        date: today,
-        checkIn: currentTime,
-        checkOut: null,
-        status: status,
-    };
-    
-    setAttendance(prev => {
-        const otherRecords = prev.filter(r => !(r.studentId === id && r.date === today));
-        return [...otherRecords, newRecord];
-    });
-
-    setScanResult({ status: 'success', message: `Absensi berhasil: ${status}`, student, class: studentClass, time: currentTime });
-    playSound(SOUNDS.SUCCESS);
-
-  }, [students, attendance, settings.lateTime, setAttendance, classes]);
+  }, [settings.lateTime]);
   
   useEffect(() => {
     if (!isScannerVisible) return;
@@ -84,7 +121,7 @@ const BarcodeScanner: React.FC = () => {
             qrbox: { width: 250, height: 250 },
             fps: 10,
             videoConstraints: {
-                facingMode: "environment" // Prioritaskan kamera belakang di mobile
+                facingMode: "environment"
             }
         },
         false
@@ -106,7 +143,6 @@ const BarcodeScanner: React.FC = () => {
     scanner.render(onScanSuccess, onScanFailure);
 
     return () => {
-        // Mencegah error jika komponen unmount sebelum scanner selesai
         if (scanner && scanner.getState()) {
             scanner.clear().catch(error => console.error("Failed to clear scanner on cleanup", error));
         }
@@ -115,7 +151,7 @@ const BarcodeScanner: React.FC = () => {
 
 
   useEffect(() => {
-    if (scanResult.status !== 'idle') {
+    if (scanResult.status !== 'idle' && scanResult.status !== 'loading') {
         const timer = setTimeout(() => {
             setScanResult({ status: 'idle', message: 'Pindai barcode kartu siswa Anda.' });
         }, 5000);
@@ -140,6 +176,7 @@ const BarcodeScanner: React.FC = () => {
     success: 'bg-green-100 text-green-800',
     error: 'bg-red-100 text-red-800',
     warning: 'bg-yellow-100 text-yellow-800',
+    loading: 'bg-blue-100 text-blue-800',
   };
 
   return (
@@ -189,12 +226,13 @@ const BarcodeScanner: React.FC = () => {
       </Card>
       
       <Card className={`w-full max-w-4xl mt-6 transition-all duration-300 ${resultColors[scanResult.status]}`}>
-        {scanResult.status === 'idle' && (
+        { (scanResult.status === 'idle' || scanResult.status === 'loading') && (
              <div className="text-center py-12">
                 <p className="text-2xl font-medium text-gray-500">{scanResult.message}</p>
+                 {scanResult.status === 'loading' && <div className="mt-4 animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>}
              </div>
         )}
-        {scanResult.status !== 'idle' && (
+        { (scanResult.status !== 'idle' && scanResult.status !== 'loading') && (
             <div className="flex flex-col md:flex-row items-center p-4">
                 {scanResult.student?.photoUrl && (
                     <img src={scanResult.student.photoUrl} alt={scanResult.student.name} className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg mb-4 md:mb-0 md:mr-6" />
