@@ -31,15 +31,7 @@ export type Database = {
           class_id?: string;
           photo_url?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: "students_class_id_fkey";
-            columns: ["class_id"];
-            isOneToOne: false;
-            referencedRelation: "classes";
-            referencedColumns: ["id"];
-          }
-        ];
+        Relationships: [];
       };
       classes: {
         Row: {
@@ -62,7 +54,7 @@ export type Database = {
           date: string;
           check_in: string | null;
           check_out: string | null;
-          status: string;
+          status: Database["public"]["Enums"]["attendance_status"];
           notes: string | null;
           created_at: string;
         };
@@ -72,7 +64,7 @@ export type Database = {
           date: string;
           check_in?: string | null;
           check_out?: string | null;
-          status: string;
+          status: Database["public"]["Enums"]["attendance_status"];
           notes?: string | null;
         };
         Update: {
@@ -80,18 +72,10 @@ export type Database = {
           date?: string;
           check_in?: string | null;
           check_out?: string | null;
-          status?: string;
+          status?: Database["public"]["Enums"]["attendance_status"];
           notes?: string | null;
         };
-        Relationships: [
-           {
-            foreignKeyName: "attendance_records_student_id_fkey",
-            columns: ["student_id"],
-            isOneToOne: false,
-            referencedRelation: "students",
-            referencedColumns: ["id"]
-          }
-        ];
+        Relationships: [];
       };
       app_settings: {
         Row: {
@@ -165,6 +149,7 @@ export type Database = {
     };
     Enums: {
       user_role: 'admin' | 'guru' | 'siswa';
+      attendance_status: 'Hadir' | 'Terlambat' | 'Sakit' | 'Ijin' | 'Alpa';
     };
     CompositeTypes: {
       [_ in never]: never;

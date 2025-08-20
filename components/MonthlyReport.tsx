@@ -27,10 +27,20 @@ const MonthlyReport: React.FC = () => {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
+            const [year, month] = selectedMonth.split('-').map(Number);
+            const startDate = `${selectedMonth}-01`;
+            
+            // Create a date for the first day of the *next* month to use as the upper bound
+            const nextMonthDate = new Date(year, month, 1); // JS month is 0-indexed, so month 12 becomes Jan of next year correctly
+            const endDate = nextMonthDate.toISOString().slice(0, 10);
+
             const [studentsRes, classesRes, attendanceRes] = await Promise.all([
                 supabase.from('students').select('*'),
                 supabase.from('classes').select('*'),
-                supabase.from('attendance_records').select('*').like('date', `${selectedMonth}-%`)
+                supabase.from('attendance_records')
+                    .select('*')
+                    .gte('date', startDate)
+                    .lt('date', endDate)
             ]);
 
             if (studentsRes.error) throw studentsRes.error;

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Student, AttendanceStatus, AppSettings, Class } from '../types';
 import { getTodayDateString, getCurrentTimeString } from '../services/dataService';
 import Card from './ui/Card';
@@ -20,25 +20,35 @@ const BarcodeScanner: React.FC = () => {
   const [scanResult, setScanResult] = useState<ScanResult>({ status: 'idle', message: 'Pindai barcode kartu siswa Anda.' });
   const [isScannerVisible, setIsScannerVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [classes, setClasses] = useState<Class[]>([]);
 
   const [settings, setSettings] = useState<AppSettings>({ entryTime: '07:00', lateTime: '07:15', exitTime: '15:00' });
+  const classMap = useMemo(() => new Map(classes.map(c => [c.id, c.name])), [classes]);
 
   useEffect(() => {
-    const fetchSettings = async () => {
-        const { data, error } = await supabase.from('app_settings').select('*').eq('id', 1).single();
-        if (error) {
-            console.error("Error fetching app settings:", error);
-            return;
-        }
-        if (data) {
+    const fetchInitialData = async () => {
+        const settingsPromise = supabase.from('app_settings').select('*').eq('id', 1).single();
+        const classesPromise = supabase.from('classes').select('*');
+
+        const [settingsResult, classesResult] = await Promise.all([settingsPromise, classesPromise]);
+
+        if (settingsResult.error) {
+            console.error("Error fetching app settings:", settingsResult.error);
+        } else if (settingsResult.data) {
             setSettings({
-                entryTime: data.entry_time,
-                lateTime: data.late_time,
-                exitTime: data.exit_time,
+                entryTime: settingsResult.data.entry_time,
+                lateTime: settingsResult.data.late_time,
+                exitTime: settingsResult.data.exit_time,
             });
         }
+        
+        if (classesResult.error) {
+            console.error("Error fetching classes:", classesResult.error);
+        } else if (classesResult.data) {
+            setClasses(classesResult.data);
+        }
     };
-    fetchSettings();
+    fetchInitialData();
   }, []);
   
   const playSound = (sound: string) => {
@@ -54,7 +64,7 @@ const BarcodeScanner: React.FC = () => {
         // 1. Find student
         const { data: studentData, error: studentError } = await supabase
             .from('students')
-            .select(`*, classes (id, name)`)
+            .select(`*`)
             .eq('id', id)
             .single();
 
@@ -70,8 +80,10 @@ const BarcodeScanner: React.FC = () => {
             classId: studentData.class_id,
             photoUrl: studentData.photo_url || `https://picsum.photos/seed/${studentData.id}/200`
         };
+        
+        const studentClassName = classMap.get(student.classId);
+        const studentClass: Class | undefined = studentClassName ? { id: student.classId, name: studentClassName } : undefined;
 
-        const studentClass: Class | undefined = studentData.classes ? { id: (studentData.classes as any).id, name: (studentData.classes as any).name } : undefined;
 
         // 2. Check for existing attendance
         const { data: existingRecord, error: existingError } = await supabase
@@ -114,7 +126,7 @@ const BarcodeScanner: React.FC = () => {
         playSound(SOUNDS.ERROR);
     }
 
-  }, [settings.lateTime]);
+  }, [settings.lateTime, classMap]);
   
   useEffect(() => {
     if (!isScannerVisible) return;
