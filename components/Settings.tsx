@@ -444,7 +444,8 @@ const UserManagement = () => {
             const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
             if (authError) throw authError;
 
-            const usersMap = new Map(authUsers?.users.map(u => [u.id, u.email]) || []);
+            // After error check, authUsers and authUsers.users are guaranteed to be defined.
+            const usersMap = new Map(authUsers.users.map(u => [u.id, u.email]));
             
             const combinedUsers = profilesData.map(profile => ({
                 ...profile,

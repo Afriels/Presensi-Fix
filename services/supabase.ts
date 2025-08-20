@@ -154,15 +154,7 @@ export type Database = {
           id?: string;
           role?: Database['public']['Enums']['user_role'];
         };
-        Relationships: [
-          {
-            foreignKeyName: 'profiles_id_fkey',
-            columns: ['id'],
-            isOneToOne: true,
-            referencedRelation: 'users',
-            referencedColumns: ['id']
-          }
-        ];
+        Relationships: [];
       };
     };
     Views: {

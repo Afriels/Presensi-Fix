@@ -85,7 +85,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const value = { session, user, loading, signOut };
 
-    return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+    // By rendering children immediately, we allow ProtectedRoute to handle the loading state
+    // and display a spinner, preventing the blank white screen.
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
