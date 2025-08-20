@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { Student, Class, AppSettings } from '../types';
@@ -29,7 +28,16 @@ const StudentData: React.FC = () => {
                 .order('name', { ascending: true });
 
             if (error) throw error;
-            setStudents(data || []);
+            
+            // Map snake_case from DB to camelCase for the app's data structure
+            const appStudents: Student[] = (data || []).map(dbStudent => ({
+                id: dbStudent.id,
+                name: dbStudent.name,
+                classId: dbStudent.class_id,
+                photoUrl: dbStudent.photo_url || `https://picsum.photos/seed/${dbStudent.id}/200`,
+            }));
+            
+            setStudents(appStudents);
         } catch (err: any) {
             setError('Gagal memuat data siswa: ' + err.message);
             console.error(err);
@@ -69,12 +77,11 @@ const StudentData: React.FC = () => {
                 if (error) throw error;
             } else { // Insert
                  const newStudentData = {
-                    ...student,
+                    id: student.id,
+                    name: student.name,
                     class_id: student.classId,
                     photo_url: `https://picsum.photos/seed/${student.id}/200`
                 };
-                // Hapus properti yang tidak ada di tabel
-                delete (newStudentData as any).classId;
                 
                 const { error } = await supabase
                     .from('students')
