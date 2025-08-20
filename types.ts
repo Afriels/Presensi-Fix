@@ -40,4 +40,6 @@ export interface AppSettings {
     entryTime: string; // HH:mm
     lateTime: string; // HH:mm
     exitTime: string; // HH:mm
+    appName?: string;
+    schoolName?: string;
 }

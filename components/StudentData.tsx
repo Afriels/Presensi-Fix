@@ -1,19 +1,46 @@
-import React, { useState, useMemo, useEffect } from 'react';
+
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
-import { Student, Class } from '../types';
+import { Student, Class, AppSettings } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
 import QRCode from 'qrcode';
+import { supabase } from '../services/supabase';
 
 const StudentData: React.FC = () => {
-    const [students, setStudents] = useLocalStorage<Student[]>('students', []);
-    const [classes] = useLocalStorage<Class[]>('classes', []);
+    const [students, setStudents] = useState<Student[]>([]);
+    const [classes] = useLocalStorage<Class[]>('classes', []); // sementara, akan dimigrasi nanti
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
     const [qrStudent, setQrStudent] = useState<Student | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
 
     const classMap = useMemo(() => new Map(classes.map(c => [c.id, c.name])), [classes]);
+
+    const fetchStudents = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const { data, error } = await supabase
+                .from('students')
+                .select('*')
+                .order('name', { ascending: true });
+
+            if (error) throw error;
+            setStudents(data || []);
+        } catch (err: any) {
+            setError('Gagal memuat data siswa: ' + err.message);
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchStudents();
+    }, [fetchStudents]);
 
     const filteredStudents = useMemo(() => {
         return students.filter(student =>
@@ -32,18 +59,48 @@ const StudentData: React.FC = () => {
         setEditingStudent(null);
     };
 
-    const handleSave = (student: Student) => {
-        if (editingStudent) {
-            setStudents(students.map(s => s.id === student.id ? student : s));
-        } else {
-            setStudents([...students, { ...student, id: student.id || Date.now().toString(), photoUrl: `https://picsum.photos/seed/${student.id || Date.now()}/200` }]);
+    const handleSave = async (student: Student) => {
+        try {
+            if (editingStudent) { // Update
+                const { error } = await supabase
+                    .from('students')
+                    .update({ name: student.name, class_id: student.classId })
+                    .eq('id', student.id);
+                if (error) throw error;
+            } else { // Insert
+                 const newStudentData = {
+                    ...student,
+                    class_id: student.classId,
+                    photo_url: `https://picsum.photos/seed/${student.id}/200`
+                };
+                // Hapus properti yang tidak ada di tabel
+                delete (newStudentData as any).classId;
+                
+                const { error } = await supabase
+                    .from('students')
+                    .insert(newStudentData);
+                if (error) throw error;
+            }
+            fetchStudents(); // Refresh data
+            closeModal();
+        } catch(err: any) {
+            alert('Gagal menyimpan data: ' + err.message);
         }
-        closeModal();
     };
 
-    const handleDelete = (studentId: string) => {
+    const handleDelete = async (studentId: string) => {
         if (window.confirm('Apakah Anda yakin ingin menghapus data siswa ini?')) {
-            setStudents(students.filter(s => s.id !== studentId));
+            try {
+                const { error } = await supabase
+                    .from('students')
+                    .delete()
+                    .eq('id', studentId);
+                if(error) throw error;
+                // Optimistic UI update
+                setStudents(prev => prev.filter(s => s.id !== studentId));
+            } catch(err: any) {
+                alert('Gagal menghapus data: ' + err.message);
+            }
         }
     };
 
@@ -51,7 +108,7 @@ const StudentData: React.FC = () => {
         <Card>
             <CardHeader>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <CardTitle>Data Siswa</CardTitle>
+                    <CardTitle>Data Siswa (dari Supabase)</CardTitle>
                     <button onClick={() => openModal()} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition w-full sm:w-auto">
                         Tambah Siswa
                     </button>
@@ -64,34 +121,38 @@ const StudentData: React.FC = () => {
                 onChange={e => setSearchTerm(e.target.value)}
                 className="w-full px-4 py-2 mb-4 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
             />
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NIS</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredStudents.map(student => (
-                            <tr key={student.id}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.id}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classMap.get(student.classId)}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div className="flex justify-end items-center gap-4">
-                                        <button onClick={() => openModal(student)} className="text-primary-600 hover:text-primary-900">Edit</button>
-                                        <button onClick={() => setQrStudent(student)} className="text-green-600 hover:text-green-900">QR Code</button>
-                                        <button onClick={() => handleDelete(student.id)} className="text-red-600 hover:text-red-900">Hapus</button>
-                                    </div>
-                                </td>
+             {loading && <p className="text-center py-4">Memuat data...</p>}
+             {error && <p className="text-center py-4 text-red-500">{error}</p>}
+             {!loading && !error && (
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NIS</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredStudents.map(student => (
+                                <tr key={student.id}>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.id}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classMap.get(student.classId)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <div className="flex justify-end items-center gap-4">
+                                            <button onClick={() => openModal(student)} className="text-primary-600 hover:text-primary-900">Edit</button>
+                                            <button onClick={() => setQrStudent(student)} className="text-green-600 hover:text-green-900">QR Code</button>
+                                            <button onClick={() => handleDelete(student.id)} className="text-red-600 hover:text-red-900">Hapus</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+             )}
             {isModalOpen && <StudentModal student={editingStudent} classes={classes} onSave={handleSave} onClose={closeModal} />}
             {qrStudent && <QRCodeModal student={qrStudent} onClose={() => setQrStudent(null)} />}
         </Card>
@@ -107,16 +168,19 @@ interface StudentModalProps {
 
 const StudentModal: React.FC<StudentModalProps> = ({ student, classes, onSave, onClose }) => {
     const [formData, setFormData] = useState<Partial<Student>>(student || { id: '', name: '', classId: '' });
+    const [isSaving, setIsSaving] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (formData.id && formData.name && formData.classId) {
-            onSave(formData as Student);
+            setIsSaving(true);
+            await onSave(formData as Student);
+            setIsSaving(false);
         }
     };
 
@@ -141,8 +205,10 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, classes, onSave, o
                         </select>
                     </div>
                     <div className="flex justify-end space-x-2 pt-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Batal</button>
-                        <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Simpan</button>
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300" disabled={isSaving}>Batal</button>
+                        <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-primary-300" disabled={isSaving}>
+                            {isSaving ? 'Menyimpan...' : 'Simpan'}
+                        </button>
                     </div>
                 </form>
             </div>
@@ -157,6 +223,13 @@ interface QRCodeModalProps {
 
 const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, onClose }) => {
     const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+    const [settings] = useLocalStorage<AppSettings>('app_settings', {
+        entryTime: '07:00',
+        lateTime: '07:15',
+        exitTime: '15:00',
+        appName: 'Aplikasi Absensi Siswa',
+        schoolName: 'SEKOLAH HARAPAN BANGSA',
+    });
 
     useEffect(() => {
         QRCode.toDataURL(student.id, { width: 256, margin: 1, errorCorrectionLevel: 'H' })
@@ -196,7 +269,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, onClose }) => {
                 <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
                     <div className="printable-card bg-white p-4 border-2 border-gray-200 rounded-lg text-center font-sans">
                         <h2 className="text-xl font-bold text-gray-800">KARTU TANDA SISWA</h2>
-                        <p className="text-sm text-gray-500 mb-4">SEKOLAH HARAPAN BANGSA</p>
+                        <p className="text-sm text-gray-500 mb-4 uppercase">{settings.schoolName}</p>
                         <img src={student.photoUrl} alt={student.name} className="w-32 h-32 rounded-full object-cover mx-auto border-4 border-primary-500 shadow-lg" />
                         <h3 className="text-2xl font-semibold mt-4">{student.name}</h3>
                         <p className="text-gray-600 text-lg">NIS: {student.id}</p>

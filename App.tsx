@@ -10,12 +10,8 @@ import ManualInput from './components/ManualInput';
 import StudentData from './components/StudentData';
 import Settings from './components/Settings';
 import UserGuide from './components/UserGuide';
-import { initializeDummyData } from './services/dataService';
 
 const App: React.FC = () => {
-  useEffect(() => {
-    initializeDummyData();
-  }, []);
 
   return (
     <Layout>
