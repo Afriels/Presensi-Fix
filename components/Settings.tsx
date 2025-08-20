@@ -1,9 +1,9 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { AppSettings, Class, AcademicYear } from '../types';
 import Card from './ui/Card';
 import { PencilIcon, TrashIcon } from '../constants';
+import { supabase } from '../services/supabase';
 
 type Tab = 'identitas' | 'jam' | 'kelas' | 'akademik' | 'sistem';
 
@@ -118,20 +118,55 @@ const TimeSettings: React.FC = () => {
 };
 
 const ClassManagement: React.FC = () => {
-    const [classes, setClasses] = useLocalStorage<Class[]>('classes', []);
+    const [classes, setClasses] = useState<Class[]>([]);
     const [newClassName, setNewClassName] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const handleAddClass = (e: React.FormEvent) => {
+    const fetchClasses = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const { data, error } = await supabase.from('classes').select('*').order('name');
+            if (error) throw error;
+            setClasses(data || []);
+        } catch (err: any) {
+            setError('Gagal memuat data kelas: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchClasses();
+    }, [fetchClasses]);
+
+    const handleAddClass = async (e: React.FormEvent) => {
         e.preventDefault();
         if (newClassName.trim()) {
-            const newClass = { id: Date.now().toString(), name: newClassName.trim() };
-            setClasses([...classes, newClass]);
-            setNewClassName('');
+            try {
+                const newClass = { id: `cls-${Date.now()}`, name: newClassName.trim() };
+                const { error } = await supabase.from('classes').insert(newClass);
+                if (error) throw error;
+                setClasses(prev => [...prev, newClass].sort((a,b) => a.name.localeCompare(b.name)));
+                setNewClassName('');
+            } catch (err: any) {
+                alert('Gagal menambahkan kelas: ' + err.message);
+            }
         }
     };
     
-    const handleDelete = (id: string) => {
-        setClasses(classes.filter(c => c.id !== id));
+    const handleDelete = async (id: string) => {
+        const confirmationMessage = 'Menghapus kelas akan mengatur ulang kelas siswa yang bersangkutan (menjadi tidak memiliki kelas). Anda yakin?';
+        if (window.confirm(confirmationMessage)) {
+            try {
+                const { error } = await supabase.from('classes').delete().eq('id', id);
+                if (error) throw error;
+                setClasses(prev => prev.filter(c => c.id !== id));
+            } catch (err: any) {
+                alert('Gagal menghapus kelas: ' + err.message);
+            }
+        }
     };
     
     return (
@@ -141,14 +176,18 @@ const ClassManagement: React.FC = () => {
                 <input type="text" value={newClassName} onChange={e => setNewClassName(e.target.value)} placeholder="Nama kelas baru" className="flex-grow p-2 border rounded-l-md" />
                 <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-r-md">Tambah</button>
             </form>
-            <ul className="space-y-2">
-                {classes.map(c => (
-                    <li key={c.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-md">
-                        <span>{c.name}</span>
-                        <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:text-red-700">Hapus</button>
-                    </li>
-                ))}
-            </ul>
+            {loading && <p>Memuat kelas...</p>}
+            {error && <p className="text-red-500">{error}</p>}
+            {!loading && !error && (
+                <ul className="space-y-2">
+                    {classes.map(c => (
+                        <li key={c.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-md">
+                            <span>{c.name}</span>
+                            <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:text-red-700">Hapus</button>
+                        </li>
+                    ))}
+                </ul>
+            )}
         </Card>
     );
 };
@@ -322,17 +361,17 @@ const SystemSettings: React.FC = () => {
     return (
         <div className="space-y-6">
             <Card className="max-w-md">
-                <h3 className="text-lg font-semibold mb-4">Cadangkan Data</h3>
-                <p className="text-sm text-gray-600 mb-4">Simpan semua data aplikasi (siswa, kelas, absensi, pengaturan) ke dalam sebuah file JSON.</p>
+                <h3 className="text-lg font-semibold mb-4">Cadangkan Data (Lokal)</h3>
+                <p className="text-sm text-gray-600 mb-4">Simpan data dari LocalStorage (pengaturan, tahun ajaran, dll.) ke file JSON. Data siswa dan kelas tidak termasuk karena sudah di Supabase.</p>
                 <button onClick={handleBackup} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
-                    Download Backup
+                    Download Backup Lokal
                 </button>
             </Card>
             <Card className="max-w-md">
-                <h3 className="text-lg font-semibold mb-4">Pulihkan Data</h3>
+                <h3 className="text-lg font-semibold mb-4">Pulihkan Data (Lokal)</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                    Pulihkan data dari file backup JSON. 
-                    <strong className="text-red-600"> Perhatian:</strong> Tindakan ini akan menimpa seluruh data yang ada saat ini.
+                    Pulihkan data lokal dari file backup. 
+                    <strong className="text-red-600"> Perhatian:</strong> Hanya akan menimpa data pengaturan, tahun ajaran, dan data lokal lainnya.
                 </p>
                 <label className="cursor-pointer px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition inline-block">
                     <span>Pilih File Backup</span>

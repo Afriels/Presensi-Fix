@@ -7,7 +7,7 @@ import { supabase } from '../services/supabase';
 
 const StudentData: React.FC = () => {
     const [students, setStudents] = useState<Student[]>([]);
-    const [classes] = useLocalStorage<Class[]>('classes', []); // sementara, akan dimigrasi nanti
+    const [classes, setClasses] = useState<Class[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -18,19 +18,19 @@ const StudentData: React.FC = () => {
 
     const classMap = useMemo(() => new Map(classes.map(c => [c.id, c.name])), [classes]);
 
-    const fetchStudents = useCallback(async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const { data, error } = await supabase
-                .from('students')
-                .select('*')
-                .order('name', { ascending: true });
+            const [studentsRes, classesRes] = await Promise.all([
+                supabase.from('students').select('*').order('name', { ascending: true }),
+                supabase.from('classes').select('*').order('name', { ascending: true })
+            ]);
 
-            if (error) throw error;
-            
-            // Map snake_case from DB to camelCase for the app's data structure
-            const appStudents: Student[] = (data || []).map(dbStudent => ({
+            if (studentsRes.error) throw studentsRes.error;
+            if (classesRes.error) throw classesRes.error;
+
+            const appStudents: Student[] = (studentsRes.data || []).map(dbStudent => ({
                 id: dbStudent.id,
                 name: dbStudent.name,
                 classId: dbStudent.class_id,
@@ -38,8 +38,9 @@ const StudentData: React.FC = () => {
             }));
             
             setStudents(appStudents);
+            setClasses(classesRes.data || []);
         } catch (err: any) {
-            setError('Gagal memuat data siswa: ' + err.message);
+            setError('Gagal memuat data: ' + err.message);
             console.error(err);
         } finally {
             setLoading(false);
@@ -47,8 +48,8 @@ const StudentData: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        fetchStudents();
-    }, [fetchStudents]);
+        fetchData();
+    }, [fetchData]);
 
     const filteredStudents = useMemo(() => {
         return students.filter(student =>
@@ -88,7 +89,7 @@ const StudentData: React.FC = () => {
                     .insert(newStudentData);
                 if (error) throw error;
             }
-            fetchStudents(); // Refresh data
+            fetchData(); // Refresh data
             closeModal();
         } catch(err: any) {
             alert('Gagal menyimpan data: ' + err.message);
@@ -115,7 +116,7 @@ const StudentData: React.FC = () => {
         <Card>
             <CardHeader>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <CardTitle>Data Siswa (dari Supabase)</CardTitle>
+                    <CardTitle>Data Siswa</CardTitle>
                     <button onClick={() => openModal()} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition w-full sm:w-auto">
                         Tambah Siswa
                     </button>
@@ -146,7 +147,7 @@ const StudentData: React.FC = () => {
                                 <tr key={student.id}>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.id}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classMap.get(student.classId)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classMap.get(student.classId) || 'Tidak ada kelas'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex justify-end items-center gap-4">
                                             <button onClick={() => openModal(student)} className="text-primary-600 hover:text-primary-900">Edit</button>

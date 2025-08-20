@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // Define the types for your database schema here.
 // This will provide type-safety for all Supabase operations.
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       students: {
@@ -25,6 +25,19 @@ export interface Database {
           photo_url?: string | null;
         };
       };
+      classes: {
+        Row: {
+          id: string;
+          name: string;
+        };
+        Insert: {
+          id: string;
+          name: string;
+        };
+        Update: {
+          name?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -39,7 +52,7 @@ export interface Database {
       [_ in never]: never;
     };
   };
-}
+};
 
 
 // =================================================================================
