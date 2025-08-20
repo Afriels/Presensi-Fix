@@ -25,42 +25,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const getSession = async () => {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) {
-                console.error('Error getting session:', error.message);
-                setLoading(false);
-                return;
-            }
-            setSession(session);
-            
-            if (session?.user) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', session.user.id)
-                    .single();
-                
-                setUser({ ...session.user, role: profile?.role || 'siswa' });
-            } else {
-                 setUser(null);
-            }
-            setLoading(false);
-        };
-        
-        getSession();
-
+        setLoading(true);
         const { data: authListener } = supabase.auth.onAuthStateChange(
             async (_event, session) => {
                 setSession(session);
                  if (session?.user) {
-                    const { data: profile } = await supabase
-                        .from('profiles')
-                        .select('role')
-                        .eq('id', session.user.id)
-                        .single();
-                    
-                    setUser({ ...session.user, role: profile?.role || 'siswa' });
+                    try {
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('role')
+                            .eq('id', session.user.id)
+                            .single();
+                        
+                        setUser({ ...session.user, role: profile?.role || 'siswa' });
+                    } catch (e) {
+                        console.error("Error fetching profile", e);
+                        setUser(null); // Ensure user is cleared if profile fetch fails
+                    }
                 } else {
                     setUser(null);
                 }

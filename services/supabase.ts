@@ -33,7 +33,7 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "students_class_id_fkey",
+            foreignKeyName: "students_class_id_fkey";
             columns: ["class_id"];
             isOneToOne: false;
             referencedRelation: "classes";
