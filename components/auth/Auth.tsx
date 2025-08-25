@@ -120,7 +120,7 @@ export const useAuth = () => {
 };
 
 export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { session, loading } = useAuth();
+    const { user, loading } = useAuth();
     const location = useLocation();
 
     if (loading) {
@@ -131,7 +131,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
         );
     }
 
-    if (!session) {
+    if (!user) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
