@@ -333,7 +333,16 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
                 return;
             }
             if(data) {
-                setSettings(data);
+                // Map snake_case from DB to camelCase for component state
+                setSettings({
+                    foundationName: data.foundation_name,
+                    schoolName: data.school_name,
+                    schoolAddress: data.school_address,
+                    schoolPhone: data.school_phone,
+                    schoolEmail: data.school_email,
+                    headmasterName: data.headmaster_name,
+                    schoolCity: data.school_city,
+                });
             }
         };
         fetchSettings();
@@ -361,17 +370,32 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
             <style>
                 {`
                 @media print {
-                  body * { visibility: hidden; }
-                  .printable-area, .printable-area * { visibility: visible; }
-                  .printable-area { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
-                  .printable-card { 
+                  body * {
+                    visibility: hidden;
+                  }
+                  .printable-area, .printable-area * {
+                    visibility: visible;
+                  }
+                  .printable-area {
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                  }
+                  .printable-card {
                     margin: auto;
                     box-shadow: none !important; 
                     border: none !important;
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
                   }
-                  .no-print { display: none !important; }
+                  .no-print {
+                    display: none !important;
+                  }
                 }
                 .text-shadow-white {
                     text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
@@ -411,14 +435,15 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
                             {/* Body */}
                             <main className="flex-grow flex p-2 text-xs z-10">
                                 {/* Left Column */}
-                                <div className="w-1/3 flex flex-col items-center justify-between text-center">
+                                <div className="w-1/3 flex flex-col items-center text-center">
                                     <img src={studentPhoto} alt={student.name} className="w-24 h-28 object-cover border-2 border-gray-700 bg-gray-200" />
+                                     <div className="flex-grow" />
                                      {qrCodeUrl ? (
-                                        <img src={qrCodeUrl} alt="QR Code" className="w-24 h-24 mt-1" />
+                                        <img src={qrCodeUrl} alt="QR Code" className="w-20 h-20" />
                                      ) : (
-                                        <div className="w-24 h-24 bg-gray-200 animate-pulse mt-1"></div>
+                                        <div className="w-20 h-20 bg-gray-200 animate-pulse"></div>
                                      )}
-                                    <p className="text-[8px] font-semibold">Berlaku Selama Menjadi Siswa</p>
+                                    <p className="text-[8px] font-semibold mt-auto">Berlaku Selama Menjadi Siswa</p>
                                 </div>
                                 {/* Right Column */}
                                 <div className="w-2/3 pl-2 flex flex-col">
