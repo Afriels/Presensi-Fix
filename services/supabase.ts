@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 // SQL to update database schema. Run this in your Supabase SQL Editor.
@@ -20,38 +21,60 @@ ADD COLUMN school_email TEXT,
 ADD COLUMN headmaster_name TEXT,
 ADD COLUMN school_city TEXT;
 
--- SETUP FOR STUDENT PHOTO UPLOADS --
+-- NEW SQL FOR THIS UPDATE --
+
+-- 3. Add columns for logo and favicon URLs
+ALTER TABLE public.app_settings
+ADD COLUMN logo_url TEXT,
+ADD COLUMN favicon_url TEXT;
+
+-- SETUP FOR STUDENT PHOTO UPLOADS (if not done) --
 
 -- 1. Create a new storage bucket named 'student-photos'
 -- Go to 'Storage' in your Supabase dashboard and click 'New bucket'.
 -- Enter 'student-photos' as the name and make sure 'Public bucket' is checked.
+-- 2. Setup policies (see previous instructions if needed)
 
--- 2. Set up policies for the bucket. Go to 'Authentication' -> 'Policies' and create new policies for 'storage.objects'.
--- If you already have policies for storage.objects, you might need to adapt these.
+-- SETUP FOR APP ASSETS (LOGO, FAVICON) --
 
--- Policy for public read access (allows the app to display images)
-CREATE POLICY "Public Read Access for Student Photos"
+-- 1. Create a public storage bucket named 'app-assets'
+-- Go to 'Storage' in your Supabase dashboard, click 'New bucket', enter 'app-assets' and check 'Public bucket'.
+
+-- 2. Add policies for the new bucket. Go to 'Authentication' -> 'Policies' and create new policies for 'storage.objects'.
+CREATE POLICY "Public Read Access for App Assets"
 ON storage.objects FOR SELECT
 TO public
-USING ( bucket_id = 'student-photos' );
+USING ( bucket_id = 'app-assets' );
 
--- Policy for authenticated uploads (allows logged-in users to upload)
-CREATE POLICY "Allow Authenticated Uploads"
-ON storage.objects FOR INSERT
+CREATE POLICY "Allow Admin CUD for App Assets"
+ON storage.objects FOR ALL -- Covers INSERT, SELECT, UPDATE, DELETE
 TO authenticated
-WITH CHECK ( bucket_id = 'student-photos' );
+USING ( bucket_id = 'app-assets' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin' )
+WITH CHECK ( bucket_id = 'app-assets' AND (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin' );
 
--- Policy for authenticated updates (allows logged-in users to replace photos)
-CREATE POLICY "Allow Authenticated Updates"
-ON storage.objects FOR UPDATE
-TO authenticated
-USING ( bucket_id = 'student-photos' );
 
--- Policy for authenticated deletes (allows logged-in users to delete photos)
-CREATE POLICY "Allow Authenticated Deletes"
-ON storage.objects FOR DELETE
+-- PENTING: KEBIJAKAN RLS UNTUK `app_settings` --
+-- Aplikasi perlu membaca pengaturan seperti logo dan favicon sebelum pengguna login.
+-- Anda WAJIB mengaktifkan RLS pada tabel `app_settings` dan membuat kebijakan untuk akses baca publik.
+
+-- 1. Aktifkan RLS pada tabel (jika belum aktif)
+-- Buka Authentication -> Policies di dasbor Supabase Anda dan aktifkan RLS untuk 'app_settings'.
+-- Atau jalankan SQL ini:
+ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+
+-- 2. Buat kebijakan untuk mengizinkan siapa saja membaca pengaturan
+CREATE POLICY "Allow public read access to app settings"
+ON public.app_settings FOR SELECT
+TO public
+USING (true);
+
+-- 3. Buat kebijakan untuk mengizinkan HANYA ADMIN memperbarui pengaturan
+-- Ini adalah praktik keamanan yang baik.
+CREATE POLICY "Allow admin users to update app settings"
+ON public.app_settings FOR UPDATE
 TO authenticated
-USING ( bucket_id = 'student-photos' );
+USING ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin')
+WITH CHECK ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin');
 
 */
 
@@ -175,6 +198,8 @@ export type Database = {
           school_email: string | null;
           headmaster_name: string | null;
           school_city: string | null;
+          logo_url: string | null;
+          favicon_url: string | null;
         };
         Insert: {
           id?: number;
@@ -189,6 +214,8 @@ export type Database = {
           school_email?: string | null;
           headmaster_name?: string | null;
           school_city?: string | null;
+          logo_url?: string | null;
+          favicon_url?: string | null;
         };
         Update: {
           id?: number;
@@ -203,6 +230,8 @@ export type Database = {
           school_email?: string | null;
           headmaster_name?: string | null;
           school_city?: string | null;
+          logo_url?: string | null;
+          favicon_url?: string | null;
         };
         Relationships: [];
       };
@@ -348,12 +377,9 @@ export type Enums<
 
 
 const supabaseUrl = 'https://vzcimsvyjzzqrlqlrpwp.supabase.co'; 
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6Y2ltc3Z5anp6cXJscWxycHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2NjkzOTYsImV4cCI6MjA3MTI0NTM5Nn0.Ru69Z_B4Cg43xYtWjh6lh7tRG03eYoWNYLCCkUsju1U'; 
-
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6Y2ltc3Z5anp6cXJscWxycHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTU4NDg2NDUsImV4cCI6MjAzMTQyNDY0NX0.9gB5LHiSD04aG9bCg-4s6pax5dhoT4Wb8hQ8QmG0pWc';
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
     global: {
-        headers: {
-            'Cache-Control': 'no-store',
-        }
-    }
+        fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+    },
 });

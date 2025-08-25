@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Student, Class, AppSettings } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
@@ -292,7 +293,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, classes, onSave, o
     );
 };
 
-const SchoolLogo = () => (
+const DefaultSchoolLogo = () => (
     <svg viewBox="0 0 100 100" className="w-16 h-16" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="50" cy="50" r="48" fill="#FFFFFF" stroke="#003366" strokeWidth="4"/>
         <path d="M50 15L20 35V75L50 95L80 75V35L50 15Z" fill="#FFD700" stroke="#003366" strokeWidth="2"/>
@@ -342,6 +343,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
                     schoolEmail: data.school_email,
                     headmasterName: data.headmaster_name,
                     schoolCity: data.school_city,
+                    logoUrl: data.logo_url,
                 });
             }
         };
@@ -411,8 +413,12 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
                            {/* Header */}
                             <div className="absolute top-0 left-0 right-0 h-[80px] bg-gradient-to-b from-blue-400 to-blue-600 rounded-b-full transform scale-x-150"></div>
                             <header className="relative z-10 flex items-center p-2 text-white">
-                                <div className="bg-white p-1 rounded-md shadow-md">
-                                    <SchoolLogo />
+                                <div className="bg-white p-1 rounded-md shadow-md flex-shrink-0">
+                                    {settings.logoUrl ? (
+                                        <img src={settings.logoUrl} alt="Logo Sekolah" className="w-16 h-16 object-contain" />
+                                    ) : (
+                                        <DefaultSchoolLogo />
+                                    )}
                                 </div>
                                 <div className="ml-2 text-center flex-grow">
                                     <p className="text-xs font-bold">{settings.foundationName || 'YAYASAN PENDIDIKAN'}</p>

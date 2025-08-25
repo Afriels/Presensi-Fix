@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import type { AppSettings, Class, AcademicYear } from '../types';
 import Card from './ui/Card';
@@ -70,6 +71,11 @@ const IdentitySettings: React.FC = () => {
     const [settings, setSettings] = useState<Partial<AppSettings>>({});
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(true);
+    
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [faviconFile, setFaviconFile] = useState<File | null>(null);
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -87,8 +93,13 @@ const IdentitySettings: React.FC = () => {
                     schoolAddress: data.school_address || '',
                     schoolPhone: data.school_phone || '',
                     schoolEmail: data.school_email || '',
-                    schoolCity: data.school_city || ''
+                    schoolCity: data.school_city || '',
+                    logoUrl: data.logo_url || '',
+                    faviconUrl: data.favicon_url || '',
                 });
+                if (data.logo_url) {
+                    setLogoPreview(data.logo_url);
+                }
             }
             setLoading(false);
         };
@@ -98,10 +109,48 @@ const IdentitySettings: React.FC = () => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setSettings(prev => ({...prev, [e.target.name]: e.target.value}));
     };
+    
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'favicon') => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            if (type === 'logo') {
+                setLogoFile(file);
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setLogoPreview(reader.result as string);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                setFaviconFile(file);
+            }
+        }
+    };
+
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSaving(true);
         try {
+            let logoUrlToSave = settings.logoUrl;
+            if (logoFile) {
+                const fileExt = logoFile.name.split('.').pop();
+                const filePath = `logo.${fileExt}`;
+                const { error: uploadError } = await supabase.storage.from('app-assets').upload(filePath, logoFile, { upsert: true });
+                if (uploadError) throw uploadError;
+                const { data: urlData } = supabase.storage.from('app-assets').getPublicUrl(filePath);
+                logoUrlToSave = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+            }
+            
+            let faviconUrlToSave = settings.faviconUrl;
+            if (faviconFile) {
+                const fileExt = faviconFile.name.split('.').pop();
+                const filePath = `favicon.${fileExt}`;
+                const { error: uploadError } = await supabase.storage.from('app-assets').upload(filePath, faviconFile, { upsert: true });
+                if (uploadError) throw uploadError;
+                const { data: urlData } = supabase.storage.from('app-assets').getPublicUrl(filePath);
+                faviconUrlToSave = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+            }
+            
             const settingsToUpdate: TablesUpdate<'app_settings'> = {
                 app_name: settings.appName,
                 school_name: settings.schoolName,
@@ -111,62 +160,91 @@ const IdentitySettings: React.FC = () => {
                 school_email: settings.schoolEmail,
                 headmaster_name: settings.headmasterName,
                 school_city: settings.schoolCity,
+                logo_url: logoUrlToSave,
+                favicon_url: faviconUrlToSave,
             };
             const { error } = await supabase.from('app_settings').update(settingsToUpdate).eq('id', 1);
 
             if (error) throw error;
 
-            setMessage('Pengaturan identitas berhasil disimpan!');
-            setTimeout(() => setMessage(''), 3000);
+            setMessage('Pengaturan berhasil disimpan! Refresh halaman untuk melihat perubahan logo/favicon.');
+            setTimeout(() => setMessage(''), 5000);
         } catch (err: any) {
             alert('Gagal menyimpan pengaturan: ' + err.message);
+        } finally {
+            setIsSaving(false);
         }
     };
     
     if (loading) return <p>Memuat pengaturan...</p>;
 
     return (
-        <Card className="max-w-xl">
-            <h3 className="text-lg font-semibold mb-4">Atur Identitas Aplikasi & Sekolah</h3>
-            <form onSubmit={handleSave} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Nama Aplikasi</label>
-                        <input type="text" name="appName" value={settings.appName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'} />
-                    </div>
-                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Nama Yayasan</label>
-                        <input type="text" name="foundationName" value={settings.foundationName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Nama Sekolah</label>
-                        <input type="text" name="schoolName" value={settings.schoolName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Nama Kepala Sekolah</label>
-                        <input type="text" name="headmasterName" value={settings.headmasterName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
-                    </div>
-                    <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700">Alamat Sekolah</label>
-                        <textarea name="schoolAddress" value={settings.schoolAddress || ''} onChange={handleChange} rows={3} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}></textarea>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Telepon Sekolah</label>
-                        <input type="text" name="schoolPhone" value={settings.schoolPhone || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
-                    </div>
-                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Email Sekolah</label>
-                        <input type="email" name="schoolEmail" value={settings.schoolEmail || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
-                    </div>
-                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Kota (untuk ttd. kartu)</label>
-                        <input type="text" name="schoolCity" value={settings.schoolCity || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
+        <Card className="max-w-3xl">
+            <form onSubmit={handleSave} className="space-y-6">
+                <div>
+                    <h3 className="text-lg font-semibold mb-4">Atur Identitas Aplikasi & Sekolah</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Nama Aplikasi</label>
+                            <input type="text" name="appName" value={settings.appName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'} />
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">Nama Yayasan</label>
+                            <input type="text" name="foundationName" value={settings.foundationName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Nama Sekolah</label>
+                            <input type="text" name="schoolName" value={settings.schoolName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Nama Kepala Sekolah</label>
+                            <input type="text" name="headmasterName" value={settings.headmasterName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700">Alamat Sekolah</label>
+                            <textarea name="schoolAddress" value={settings.schoolAddress || ''} onChange={handleChange} rows={3} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}></textarea>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Telepon Sekolah</label>
+                            <input type="text" name="schoolPhone" value={settings.schoolPhone || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">Email Sekolah</label>
+                            <input type="email" name="schoolEmail" value={settings.schoolEmail || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">Kota (untuk ttd. kartu)</label>
+                            <input type="text" name="schoolCity" value={settings.schoolCity || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
+                        </div>
                     </div>
                 </div>
 
+                <div className="border-t pt-6">
+                     <h3 className="text-lg font-semibold mb-4">Logo & Favicon</h3>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Logo Sekolah</label>
+                            <p className="text-xs text-gray-500 mb-2">Akan ditampilkan di sidebar & kartu siswa.</p>
+                            {logoPreview && (
+                                <div className="mt-2 p-2 border rounded-md inline-block">
+                                    <img src={logoPreview} alt="Logo Preview" className="h-20 w-auto object-contain" />
+                                </div>
+                            )}
+                            <input type="file" accept="image/png, image/jpeg, image/svg+xml" onChange={(e) => handleFileChange(e, 'logo')} className="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100" disabled={user?.role !== 'admin'}/>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Favicon</label>
+                             <p className="text-xs text-gray-500 mb-2">Ikon yang muncul di tab browser.</p>
+                            <input type="file" accept="image/x-icon, image/png, image/svg+xml" onChange={(e) => handleFileChange(e, 'favicon')} className="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100" disabled={user?.role !== 'admin'}/>
+                        </div>
+                     </div>
+                </div>
+
                 {user?.role === 'admin' && (
-                    <div className="flex justify-end mt-4">
-                        <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Simpan Perubahan</button>
+                    <div className="flex justify-end mt-4 border-t pt-4">
+                        <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-primary-300" disabled={isSaving}>
+                            {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+                        </button>
                     </div>
                 )}
             </form>

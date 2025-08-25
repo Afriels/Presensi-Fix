@@ -1,3 +1,4 @@
+
 export enum AttendanceStatus {
   HADIR = 'Hadir',
   TERLAMBAT = 'Terlambat',
@@ -52,4 +53,6 @@ export interface AppSettings {
     schoolEmail?: string;
     headmasterName?: string;
     schoolCity?: string;
+    logoUrl?: string;
+    faviconUrl?: string;
 }
