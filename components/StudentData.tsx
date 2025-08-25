@@ -36,6 +36,10 @@ const StudentData: React.FC = () => {
                 name: dbStudent.name,
                 classId: dbStudent.class_id,
                 photoUrl: dbStudent.photo_url || `https://picsum.photos/seed/${dbStudent.id}/200`,
+                nisn: dbStudent.nisn || undefined,
+                pob: dbStudent.pob || undefined,
+                dob: dbStudent.dob || undefined,
+                address: dbStudent.address || undefined,
             }));
             
             setStudents(appStudents);
@@ -71,26 +75,21 @@ const StudentData: React.FC = () => {
 
     const handleSave = async (student: Student) => {
         try {
-            if (editingStudent) { // Update
-                const studentToUpdate: TablesUpdate<'students'> = { name: student.name, class_id: student.classId };
-                const { error } = await supabase
-                    .from('students')
-                    .update(studentToUpdate)
-                    .eq('id', student.id);
-                if (error) throw error;
-            } else { // Insert
-                 const newStudentData: TablesInsert<'students'> = {
-                    id: student.id,
-                    name: student.name,
-                    class_id: student.classId,
-                    photo_url: `https://picsum.photos/seed/${student.id}/200`
-                };
-                
-                const { error } = await supabase
-                    .from('students')
-                    .insert(newStudentData);
-                if (error) throw error;
-            }
+            const studentData: TablesInsert<'students'> & { id: string } = {
+                id: student.id,
+                name: student.name,
+                class_id: student.classId,
+                nisn: student.nisn,
+                pob: student.pob,
+                dob: student.dob,
+                address: student.address,
+                photo_url: student.photoUrl,
+            };
+            
+            // Supabase upsert will handle both insert and update
+            const { error } = await supabase.from('students').upsert(studentData);
+            if (error) throw error;
+            
             fetchData(); // Refresh data
             closeModal();
         } catch(err: any) {
@@ -160,7 +159,7 @@ const StudentData: React.FC = () => {
                                                     <button onClick={() => handleDelete(student.id)} className="text-red-600 hover:text-red-900">Hapus</button>
                                                 </>
                                             )}
-                                            <button onClick={() => setQrStudent(student)} className="text-green-600 hover:text-green-900">QR Code</button>
+                                            <button onClick={() => setQrStudent(student)} className="text-green-600 hover:text-green-900">Cetak Kartu</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -170,7 +169,7 @@ const StudentData: React.FC = () => {
                 </div>
              )}
             {isModalOpen && <StudentModal student={editingStudent} classes={classes} onSave={handleSave} onClose={closeModal} />}
-            {qrStudent && <QRCodeModal student={qrStudent} onClose={() => setQrStudent(null)} />}
+            {qrStudent && <QRCodeModal student={qrStudent} studentClass={classMap.get(qrStudent.classId)} onClose={() => setQrStudent(null)} />}
         </Card>
     );
 };
@@ -186,7 +185,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, classes, onSave, o
     const [formData, setFormData] = useState<Partial<Student>>(student || { id: '', name: '', classId: '' });
     const [isSaving, setIsSaving] = useState(false);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
@@ -201,17 +200,33 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, classes, onSave, o
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
-            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
                 <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">{student ? 'Edit Siswa' : 'Tambah Siswa'}</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label htmlFor="id" className="block text-sm font-medium text-gray-700">NIS</label>
+                        <label htmlFor="id" className="block text-sm font-medium text-gray-700">No. Induk Siswa (NIS)</label>
                         <input type="text" name="id" id="id" value={formData.id} onChange={handleChange} required disabled={!!student} className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md disabled:bg-gray-100" />
+                    </div>
+                     <div>
+                        <label htmlFor="nisn" className="block text-sm font-medium text-gray-700">NISN</label>
+                        <input type="text" name="nisn" id="nisn" value={formData.nisn || ''} onChange={handleChange} className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
                     </div>
                     <div>
                         <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nama Lengkap</label>
                         <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} required className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                    </div>
+                     <div>
+                        <label htmlFor="pob" className="block text-sm font-medium text-gray-700">Tempat Lahir</label>
+                        <input type="text" name="pob" id="pob" value={formData.pob || ''} onChange={handleChange} className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                    </div>
+                    <div>
+                        <label htmlFor="dob" className="block text-sm font-medium text-gray-700">Tanggal Lahir</label>
+                        <input type="date" name="dob" id="dob" value={formData.dob || ''} onChange={handleChange} className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                    </div>
+                    <div>
+                        <label htmlFor="address" className="block text-sm font-medium text-gray-700">Alamat</label>
+                        <textarea name="address" id="address" value={formData.address || ''} onChange={handleChange} rows={3} className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
                     </div>
                     <div>
                         <label htmlFor="classId" className="block text-sm font-medium text-gray-700">Kelas</label>
@@ -232,77 +247,153 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, classes, onSave, o
     );
 };
 
+const SchoolLogo = () => (
+    <svg viewBox="0 0 100 100" className="w-16 h-16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="48" fill="#FFFFFF" stroke="#003366" strokeWidth="4"/>
+        <path d="M50 15L20 35V75L50 95L80 75V35L50 15Z" fill="#FFD700" stroke="#003366" strokeWidth="2"/>
+        <path d="M50 60L25 47.5V72.5L50 85L75 72.5V47.5L50 60Z" fill="#FFFFFF" stroke="#003366" strokeWidth="2"/>
+        <text x="50" y="55" fontFamily="Arial" fontSize="20" fill="#003366" textAnchor="middle" fontWeight="bold">S</text>
+    </svg>
+);
+const SchoolSeal = () => (
+    <svg viewBox="0 0 100 100" className="w-20 h-20 opacity-20" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="45" stroke="#003366" strokeWidth="2" fill="none" />
+        <circle cx="50" cy="50" r="40" stroke="#003366" strokeWidth="1" fill="none" strokeDasharray="4 2"/>
+        <text x="50" y="30" textAnchor="middle" fontSize="8" fill="#003366" transform="rotate(-15 50 30)">YAYASAN PENDIDIKAN</text>
+        <text x="50" y="75" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#003366">SEKOLAH</text>
+        <path d="M50 35 l5 10 l-10 0 Z" fill="#003366"/>
+    </svg>
+);
+
+
 interface QRCodeModalProps {
     student: Student;
+    studentClass?: string;
     onClose: () => void;
 }
 
-const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, onClose }) => {
+const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClose }) => {
     const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
-    const [schoolName, setSchoolName] = useState('SEKOLAH ANDA');
+    const [settings, setSettings] = useState<Partial<AppSettings>>({});
 
     useEffect(() => {
-        QRCode.toDataURL(student.id, { width: 256, margin: 1, errorCorrectionLevel: 'H' })
+        QRCode.toDataURL(student.id, { width: 128, margin: 1 })
             .then(url => setQrCodeUrl(url))
             .catch(err => console.error("Failed to generate QR code", err));
             
-        const fetchSchoolName = async () => {
-            const { data, error } = await supabase.from('app_settings').select('school_name').eq('id', 1).single();
-            if (error) {
-                console.error("Error fetching school name:", error);
+        const fetchSettings = async () => {
+            const { data, error } = await supabase.from('app_settings').select('*').eq('id', 1).single();
+            if (error && error.code !== 'PGRST116') {
+                console.error("Error fetching settings:", error);
                 return;
             }
-            if(data && data.school_name) {
-                setSchoolName(data.school_name);
+            if(data) {
+                setSettings(data);
             }
         };
-        fetchSchoolName();
-
+        fetchSettings();
     }, [student.id]);
 
-    const handlePrint = () => {
-        window.print();
+    const handlePrint = () => window.print();
+    
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return '-';
+        // Add T00:00:00 to ensure date is parsed in local timezone, not UTC
+        return new Date(dateString + 'T00:00:00').toLocaleDateString('id-ID', {
+            day: 'numeric', month: 'long', year: 'numeric'
+        });
     };
+    
+    const cardIssueDate = new Date().toLocaleDateString('id-ID', {
+        day: 'numeric', month: 'long', year: 'numeric'
+    });
 
     return (
         <>
             <style>
                 {`
                 @media print {
-                  body * {
-                    visibility: hidden;
+                  body * { visibility: hidden; }
+                  .printable-area, .printable-area * { visibility: visible; }
+                  .printable-area { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+                  .printable-card { 
+                    margin: auto;
+                    box-shadow: none !important; 
+                    border: none !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
                   }
-                  .printable-card, .printable-card * {
-                    visibility: visible;
-                  }
-                  .printable-card {
-                    position: fixed;
-                    left: 50%;
-                    top: 50%;
-                    transform: translate(-50%, -50%);
-                    box-shadow: none !important;
-                    border: 1px solid #333 !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                  }
+                  .no-print { display: none !important; }
+                }
+                .text-shadow-white {
+                    text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
                 }
                 `}
             </style>
-            <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center printable-area-container">
-                <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
-                    <div className="printable-card bg-white p-4 border-2 border-gray-200 rounded-lg text-center font-sans">
-                        <h2 className="text-xl font-bold text-gray-800">KARTU TANDA SISWA</h2>
-                        <p className="text-sm text-gray-500 mb-4 uppercase">{schoolName}</p>
-                        <img src={student.photoUrl} alt={student.name} className="w-32 h-32 rounded-full object-cover mx-auto border-4 border-primary-500 shadow-lg" />
-                        <h3 className="text-2xl font-semibold mt-4">{student.name}</h3>
-                        <p className="text-gray-600 text-lg">NIS: {student.id}</p>
-                        {qrCodeUrl ? (
-                             <img src={qrCodeUrl} alt="QR Code" className="mx-auto mt-4 w-48 h-48" />
-                        ) : (
-                            <div className="mx-auto mt-4 w-48 h-48 bg-gray-200 animate-pulse"></div>
-                        )}
+            <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 printable-area">
+                <div className="bg-white rounded-lg shadow-xl w-full max-w-lg pb-4 no-print">
+                    <div className="overflow-x-auto p-4">
+                        <div 
+                            className="printable-card relative w-[500px] h-[315px] bg-white mx-auto overflow-hidden font-sans border-2 border-gray-300 rounded-lg flex flex-col"
+                        >
+                           {/* Header */}
+                            <div className="absolute top-0 left-0 right-0 h-[80px] bg-gradient-to-b from-blue-400 to-blue-600 rounded-b-full transform scale-x-150"></div>
+                            <header className="relative z-10 flex items-center p-2 text-white">
+                                <div className="bg-white p-1 rounded-md shadow-md">
+                                    <SchoolLogo />
+                                </div>
+                                <div className="ml-2 text-center flex-grow">
+                                    <p className="text-xs font-bold">{settings.foundationName || 'YAYASAN PENDIDIKAN'}</p>
+                                    <h1 className="text-2xl font-black text-red-600 text-shadow-white tracking-wide"
+                                    >{settings.schoolName || 'NAMA SEKOLAH'}</h1>
+                                    <p className="text-[8px] leading-tight">{settings.schoolAddress || 'Alamat Sekolah'}</p>
+                                    <p className="text-[8px] leading-tight">
+                                        {`Telp. ${settings.schoolPhone || '-'} | email: ${settings.schoolEmail || '-'}`}
+                                    </p>
+                                </div>
+                            </header>
+
+                            {/* Title */}
+                            <div className="relative text-center my-1 z-10">
+                                <span className="bg-yellow-400 text-black text-sm font-bold px-8 py-1">
+                                    KARTU TANDA PELAJAR
+                                </span>
+                            </div>
+
+                            {/* Body */}
+                            <main className="flex-grow flex p-2 text-xs z-10">
+                                {/* Left Column */}
+                                <div className="w-1/3 flex flex-col items-center justify-between text-center">
+                                    <img src={student.photoUrl} alt={student.name} className="w-24 h-28 object-cover border-2 border-gray-700" />
+                                     {qrCodeUrl ? (
+                                        <img src={qrCodeUrl} alt="QR Code" className="w-24 h-24 mt-1" />
+                                     ) : (
+                                        <div className="w-24 h-24 bg-gray-200 animate-pulse mt-1"></div>
+                                     )}
+                                    <p className="text-[8px] font-semibold">Berlaku Selama Menjadi Siswa</p>
+                                </div>
+                                {/* Right Column */}
+                                <div className="w-2/3 pl-2 flex flex-col">
+                                    <div className="grid grid-cols-[max-content,auto] gap-x-2 gap-y-0 leading-tight">
+                                        <strong>No. Induk</strong><p>: {student.id}</p>
+                                        <strong>NISN</strong><p>: {student.nisn || '-'}</p>
+                                        <strong>Nama Siswa</strong><p>: {student.name}</p>
+                                        <strong>Tempat/Tgl. Lahir</strong><p>: {`${student.pob || ''}, ${formatDate(student.dob)}`}</p>
+                                        <strong>Alamat</strong><p className="break-words">: {student.address || '-'}</p>
+                                    </div>
+                                    <div className="flex-grow"></div>
+                                    <div className="text-center self-end w-40 relative">
+                                        <div className="absolute -top-8 -left-8"><SchoolSeal/></div>
+                                        <p>{settings.schoolCity || 'Kota'}, {cardIssueDate}</p>
+                                        <p>Kepala Sekolah,</p>
+                                        <div className="h-10"></div>
+                                        <p className="font-bold underline">{settings.headmasterName || 'Nama Kepala Sekolah'}</p>
+                                    </div>
+                                </div>
+                            </main>
+                        </div>
                     </div>
-                    <div className="flex justify-end space-x-2 pt-4 no-print">
+                    <div className="flex justify-end space-x-2 px-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Tutup</button>
                         <button type="button" onClick={handlePrint} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Cetak</button>
                     </div>

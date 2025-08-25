@@ -29,7 +29,7 @@ const BarcodeScanner: React.FC = () => {
     const fetchInitialData = async () => {
         const { data: settingsData, error: settingsError } = await supabase.from('app_settings').select('entry_time, late_time, exit_time').eq('id', 1).single();
 
-        if (settingsError) {
+        if (settingsError && settingsError.code !== 'PGRST116') {
             console.error("Error fetching app settings:", settingsError);
         } else if (settingsData) {
             setSettings({

@@ -74,28 +74,25 @@ const IdentitySettings: React.FC = () => {
     useEffect(() => {
         const fetchSettings = async () => {
             setLoading(true);
-            const { data, error } = await supabase.from('app_settings').select('app_name, school_name').eq('id', 1).single();
+            const { data, error } = await supabase.from('app_settings').select('*').eq('id', 1).single();
             if (error && error.code !== 'PGRST116') {
                 console.error("Error fetching settings:", error);
             } else if (data) {
-                setSettings({ appName: data.app_name || '', schoolName: data.school_name || ''});
+                setSettings(data);
             }
             setLoading(false);
         };
         fetchSettings();
     }, []);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setSettings(prev => ({...prev, [e.target.name]: e.target.value}));
     };
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const settingsToUpdate: TablesUpdate<'app_settings'> = {
-                app_name: settings.appName,
-                school_name: settings.schoolName
-            };
+            const { id, ...settingsToUpdate } = settings;
             const { error } = await supabase.from('app_settings').update(settingsToUpdate).eq('id', 1);
 
             if (error) throw error;
@@ -110,19 +107,46 @@ const IdentitySettings: React.FC = () => {
     if (loading) return <p>Memuat pengaturan...</p>;
 
     return (
-        <Card className="max-w-md">
+        <Card className="max-w-xl">
             <h3 className="text-lg font-semibold mb-4">Atur Identitas Aplikasi & Sekolah</h3>
             <form onSubmit={handleSave} className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Nama Aplikasi</label>
-                    <input type="text" name="appName" value={settings.appName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Nama Aplikasi</label>
+                        <input type="text" name="appName" value={settings.appName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'} />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700">Nama Yayasan</label>
+                        <input type="text" name="foundationName" value={settings.foundationName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Nama Sekolah</label>
+                        <input type="text" name="schoolName" value={settings.schoolName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Nama Kepala Sekolah</label>
+                        <input type="text" name="headmasterName" value={settings.headmasterName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
+                    </div>
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700">Alamat Sekolah</label>
+                        <textarea name="schoolAddress" value={settings.schoolAddress || ''} onChange={handleChange} rows={3} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}></textarea>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Telepon Sekolah</label>
+                        <input type="text" name="schoolPhone" value={settings.schoolPhone || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700">Email Sekolah</label>
+                        <input type="email" name="schoolEmail" value={settings.schoolEmail || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700">Kota (untuk ttd. kartu)</label>
+                        <input type="text" name="schoolCity" value={settings.schoolCity || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
+                    </div>
                 </div>
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Nama Sekolah</label>
-                    <input type="text" name="schoolName" value={settings.schoolName || ''} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" disabled={user?.role !== 'admin'}/>
-                </div>
+
                 {user?.role === 'admin' && (
-                    <div className="flex justify-end">
+                    <div className="flex justify-end mt-4">
                         <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Simpan Perubahan</button>
                     </div>
                 )}

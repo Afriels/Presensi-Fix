@@ -11,6 +11,10 @@ export interface Student {
   name: string;
   classId: string;
   photoUrl: string;
+  nisn?: string;
+  pob?: string; // place of birth
+  dob?: string; // date of birth (YYYY-MM-DD)
+  address?: string;
 }
 
 export interface Class {
@@ -42,4 +46,10 @@ export interface AppSettings {
     exitTime: string; // HH:mm
     appName?: string;
     schoolName?: string;
+    foundationName?: string;
+    schoolAddress?: string;
+    schoolPhone?: string;
+    schoolEmail?: string;
+    headmasterName?: string;
+    schoolCity?: string;
 }

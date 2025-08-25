@@ -1,5 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 
+// SQL to update database schema. Run this in your Supabase SQL Editor.
+/*
+-- 1. Add new columns to the students table
+ALTER TABLE public.students
+ADD COLUMN nisn TEXT,
+ADD COLUMN pob TEXT, -- Place of Birth
+ADD COLUMN dob DATE, -- Date of Birth
+ADD COLUMN address TEXT;
+
+-- 2. Add new columns to the app_settings table for the ID card
+ALTER TABLE public.app_settings
+ADD COLUMN foundation_name TEXT,
+ADD COLUMN school_address TEXT,
+ADD COLUMN school_phone TEXT,
+ADD COLUMN school_email TEXT,
+ADD COLUMN headmaster_name TEXT,
+ADD COLUMN school_city TEXT;
+*/
+
+
 // Define the types for your database schema here.
 // This will provide type-safety for all Supabase operations.
 export type Json =
@@ -19,17 +39,29 @@ export type Database = {
           name: string;
           class_id: string;
           photo_url: string;
+          nisn: string | null;
+          pob: string | null;
+          dob: string | null;
+          address: string | null;
         };
         Insert: {
           id: string;
           name: string;
           class_id: string;
           photo_url?: string;
+          nisn?: string | null;
+          pob?: string | null;
+          dob?: string | null;
+          address?: string | null;
         };
         Update: {
           name?: string;
           class_id?: string;
           photo_url?: string;
+          nisn?: string | null;
+          pob?: string | null;
+          dob?: string | null;
+          address?: string | null;
         };
         Relationships: [
           {
@@ -101,6 +133,12 @@ export type Database = {
           exit_time: string;
           app_name: string | null;
           school_name: string | null;
+          foundation_name: string | null;
+          school_address: string | null;
+          school_phone: string | null;
+          school_email: string | null;
+          headmaster_name: string | null;
+          school_city: string | null;
         };
         Insert: {
           id?: number;
@@ -109,6 +147,12 @@ export type Database = {
           exit_time: string;
           app_name?: string | null;
           school_name?: string | null;
+          foundation_name?: string | null;
+          school_address?: string | null;
+          school_phone?: string | null;
+          school_email?: string | null;
+          headmaster_name?: string | null;
+          school_city?: string | null;
         };
         Update: {
           id?: number;
@@ -117,6 +161,12 @@ export type Database = {
           exit_time?: string;
           app_name?: string | null;
           school_name?: string | null;
+          foundation_name?: string | null;
+          school_address?: string | null;
+          school_phone?: string | null;
+          school_email?: string | null;
+          headmaster_name?: string | null;
+          school_city?: string | null;
         };
         Relationships: [];
       };
