@@ -78,7 +78,17 @@ const IdentitySettings: React.FC = () => {
             if (error && error.code !== 'PGRST116') {
                 console.error("Error fetching settings:", error);
             } else if (data) {
-                setSettings(data);
+                setSettings({
+                    id: data.id,
+                    appName: data.app_name || '',
+                    foundationName: data.foundation_name || '',
+                    schoolName: data.school_name || '',
+                    headmasterName: data.headmaster_name || '',
+                    schoolAddress: data.school_address || '',
+                    schoolPhone: data.school_phone || '',
+                    schoolEmail: data.school_email || '',
+                    schoolCity: data.school_city || ''
+                });
             }
             setLoading(false);
         };
@@ -92,7 +102,16 @@ const IdentitySettings: React.FC = () => {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const { id, ...settingsToUpdate } = settings;
+            const settingsToUpdate: TablesUpdate<'app_settings'> = {
+                app_name: settings.appName,
+                school_name: settings.schoolName,
+                foundation_name: settings.foundationName,
+                school_address: settings.schoolAddress,
+                school_phone: settings.schoolPhone,
+                school_email: settings.schoolEmail,
+                headmaster_name: settings.headmasterName,
+                school_city: settings.schoolCity,
+            };
             const { error } = await supabase.from('app_settings').update(settingsToUpdate).eq('id', 1);
 
             if (error) throw error;
@@ -314,7 +333,12 @@ const AcademicYearManagement: React.FC = () => {
         if (error) {
             console.error("Error fetching academic years:", error);
         } else if (data) {
-            setYears((data || []).map(y => ({...y, semester: y.semester as 'Ganjil' | 'Genap'})));
+            setYears((data || []).map(y => ({
+                id: y.id,
+                year: y.year,
+                semester: y.semester as 'Ganjil' | 'Genap',
+                isActive: y.is_active,
+            })));
         }
         setLoading(false);
     }, []);

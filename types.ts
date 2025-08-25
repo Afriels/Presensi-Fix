@@ -10,7 +10,7 @@ export interface Student {
   id: string; // Nomor Induk Siswa
   name: string;
   classId: string;
-  photoUrl: string;
+  photoUrl?: string;
   nisn?: string;
   pob?: string; // place of birth
   dob?: string; // date of birth (YYYY-MM-DD)

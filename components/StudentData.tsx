@@ -35,7 +35,7 @@ const StudentData: React.FC = () => {
                 id: dbStudent.id,
                 name: dbStudent.name,
                 classId: dbStudent.class_id,
-                photoUrl: dbStudent.photo_url || `https://picsum.photos/seed/${dbStudent.id}/200`,
+                photoUrl: dbStudent.photo_url || undefined,
                 nisn: dbStudent.nisn || undefined,
                 pob: dbStudent.pob || undefined,
                 dob: dbStudent.dob || undefined,
@@ -73,9 +73,28 @@ const StudentData: React.FC = () => {
         setEditingStudent(null);
     };
 
-    const handleSave = async (student: Student) => {
+    const handleSave = async (student: Student, photoFile: File | null) => {
         try {
-            const studentData: TablesInsert<'students'> & { id: string } = {
+            let finalPhotoUrl = student.photoUrl;
+
+            if (photoFile) {
+                const fileExt = photoFile.name.split('.').pop();
+                const filePath = `${student.id}.${fileExt}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('student-photos')
+                    .upload(filePath, photoFile, { upsert: true });
+                
+                if (uploadError) throw uploadError;
+
+                const { data: urlData } = supabase.storage
+                    .from('student-photos')
+                    .getPublicUrl(filePath);
+                
+                finalPhotoUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+            }
+
+            const studentData: TablesInsert<'students'> = {
                 id: student.id,
                 name: student.name,
                 class_id: student.classId,
@@ -83,14 +102,13 @@ const StudentData: React.FC = () => {
                 pob: student.pob,
                 dob: student.dob,
                 address: student.address,
-                photo_url: student.photoUrl,
+                photo_url: finalPhotoUrl,
             };
             
-            // Supabase upsert will handle both insert and update
             const { error } = await supabase.from('students').upsert(studentData);
             if (error) throw error;
             
-            fetchData(); // Refresh data
+            fetchData();
             closeModal();
         } catch(err: any) {
             alert('Gagal menyimpan data: ' + err.message);
@@ -177,12 +195,14 @@ const StudentData: React.FC = () => {
 interface StudentModalProps {
     student: Student | null;
     classes: Class[];
-    onSave: (student: Student) => void;
+    onSave: (student: Student, photoFile: File | null) => void;
     onClose: () => void;
 }
 
 const StudentModal: React.FC<StudentModalProps> = ({ student, classes, onSave, onClose }) => {
     const [formData, setFormData] = useState<Partial<Student>>(student || { id: '', name: '', classId: '' });
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(student?.photoUrl || null);
     const [isSaving, setIsSaving] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -190,11 +210,23 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, classes, onSave, o
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setPhotoFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPhotoPreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (formData.id && formData.name && formData.classId) {
             setIsSaving(true);
-            await onSave(formData as Student);
+            await onSave(formData as Student, photoFile);
             setIsSaving(false);
         }
     };
@@ -204,6 +236,19 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, classes, onSave, o
             <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
                 <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">{student ? 'Edit Siswa' : 'Tambah Siswa'}</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="flex items-center justify-center mb-4">
+                        {photoPreview ? (
+                            <img src={photoPreview} alt="Preview" className="w-24 h-24 rounded-full object-cover" />
+                        ) : (
+                            <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3"/><circle cx="12" cy="10" r="3"/><circle cx="12" cy="12" r="10"/></svg>
+                            </div>
+                        )}
+                    </div>
+                     <div>
+                        <label htmlFor="photoUrl" className="block text-sm font-medium text-gray-700">Foto Siswa</label>
+                        <input type="file" name="photoUrl" id="photoUrl" accept="image/png, image/jpeg" onChange={handlePhotoChange} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"/>
+                    </div>
                     <div>
                         <label htmlFor="id" className="block text-sm font-medium text-gray-700">No. Induk Siswa (NIS)</label>
                         <input type="text" name="id" id="id" value={formData.id} onChange={handleChange} required disabled={!!student} className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md disabled:bg-gray-100" />
@@ -308,6 +353,9 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
         day: 'numeric', month: 'long', year: 'numeric'
     });
 
+    const studentPhoto = student.photoUrl || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3C/svg%3E";
+
+
     return (
         <>
             <style>
@@ -364,7 +412,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
                             <main className="flex-grow flex p-2 text-xs z-10">
                                 {/* Left Column */}
                                 <div className="w-1/3 flex flex-col items-center justify-between text-center">
-                                    <img src={student.photoUrl} alt={student.name} className="w-24 h-28 object-cover border-2 border-gray-700" />
+                                    <img src={studentPhoto} alt={student.name} className="w-24 h-28 object-cover border-2 border-gray-700 bg-gray-200" />
                                      {qrCodeUrl ? (
                                         <img src={qrCodeUrl} alt="QR Code" className="w-24 h-24 mt-1" />
                                      ) : (

@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 
 // SQL to update database schema. Run this in your Supabase SQL Editor.
 /*
+-- RUN THESE IF YOU HAVEN'T ALREADY FROM THE PREVIOUS UPDATE --
+
 -- 1. Add new columns to the students table
 ALTER TABLE public.students
 ADD COLUMN nisn TEXT,
@@ -17,6 +19,40 @@ ADD COLUMN school_phone TEXT,
 ADD COLUMN school_email TEXT,
 ADD COLUMN headmaster_name TEXT,
 ADD COLUMN school_city TEXT;
+
+-- SETUP FOR STUDENT PHOTO UPLOADS --
+
+-- 1. Create a new storage bucket named 'student-photos'
+-- Go to 'Storage' in your Supabase dashboard and click 'New bucket'.
+-- Enter 'student-photos' as the name and make sure 'Public bucket' is checked.
+
+-- 2. Set up policies for the bucket. Go to 'Authentication' -> 'Policies' and create new policies for 'storage.objects'.
+-- If you already have policies for storage.objects, you might need to adapt these.
+
+-- Policy for public read access (allows the app to display images)
+CREATE POLICY "Public Read Access for Student Photos"
+ON storage.objects FOR SELECT
+TO public
+USING ( bucket_id = 'student-photos' );
+
+-- Policy for authenticated uploads (allows logged-in users to upload)
+CREATE POLICY "Allow Authenticated Uploads"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK ( bucket_id = 'student-photos' );
+
+-- Policy for authenticated updates (allows logged-in users to replace photos)
+CREATE POLICY "Allow Authenticated Updates"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING ( bucket_id = 'student-photos' );
+
+-- Policy for authenticated deletes (allows logged-in users to delete photos)
+CREATE POLICY "Allow Authenticated Deletes"
+ON storage.objects FOR DELETE
+TO authenticated
+USING ( bucket_id = 'student-photos' );
+
 */
 
 
@@ -38,7 +74,7 @@ export type Database = {
           id: string;
           name: string;
           class_id: string;
-          photo_url: string;
+          photo_url: string | null;
           nisn: string | null;
           pob: string | null;
           dob: string | null;
@@ -48,7 +84,7 @@ export type Database = {
           id: string;
           name: string;
           class_id: string;
-          photo_url?: string;
+          photo_url?: string | null;
           nisn?: string | null;
           pob?: string | null;
           dob?: string | null;
@@ -57,7 +93,7 @@ export type Database = {
         Update: {
           name?: string;
           class_id?: string;
-          photo_url?: string;
+          photo_url?: string | null;
           nisn?: string | null;
           pob?: string | null;
           dob?: string | null;
