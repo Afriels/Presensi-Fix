@@ -1,24 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
 import { SchoolIcon } from '../../constants';
 import { useAuth } from './Auth';
 
 const LoginPage: React.FC = () => {
-    const { session } = useAuth();
+    const { session, loading: authLoading } = useAuth();
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    if (session) {
-        navigate('/dashboard');
-    }
+    useEffect(() => {
+        // Only redirect if authentication is no longer loading and a session is found.
+        if (session && !authLoading) {
+            navigate('/dashboard', { replace: true });
+        }
+    }, [session, authLoading, navigate]);
 
     const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setLoading(true);
+        setIsSubmitting(true);
         setError(null);
         try {
             const { error } = await supabase.auth.signInWithPassword({
@@ -26,11 +29,13 @@ const LoginPage: React.FC = () => {
                 password,
             });
             if (error) throw error;
-            navigate('/dashboard');
+            // The onAuthStateChange listener will handle the navigation after login.
+            // A redundant navigate call here is okay as a fallback.
+            navigate('/dashboard', { replace: true });
         } catch (err: any) {
             setError(err.error_description || err.message);
         } finally {
-            setLoading(false);
+            setIsSubmitting(false);
         }
     };
 
@@ -93,10 +98,10 @@ const LoginPage: React.FC = () => {
                         <div>
                             <button
                                 type="submit"
-                                disabled={loading}
+                                disabled={isSubmitting}
                                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:bg-primary-300"
                             >
-                                {loading ? 'Memproses...' : 'Login'}
+                                {isSubmitting ? 'Memproses...' : 'Login'}
                             </button>
                         </div>
                     </form>
