@@ -377,7 +377,7 @@ export type Enums<
 
 
 const supabaseUrl = 'https://vzcimsvyjzzqrlqlrpwp.supabase.co'; 
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6Y2ltc3Z5anp6cXJscWxycHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTU4NDg2NDUsImV4cCI6MjAzMTQyNDY0NX0.9gB5LHiSD04aG9bCg-4s6pax5dhoT4Wb8hQ8QmG0pWc';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6Y2ltc3Z5anp6cXJscWxycHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2NjkzOTYsImV4cCI6MjA3MTI0NTM5Nn0.Ru69Z_B4Cg43xYtWjh6lh7tRG03eYoWNYLCCkUsju1U';
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
     global: {
         fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
