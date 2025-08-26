@@ -1,6 +1,7 @@
 
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import type { Student, Class, AppSettings } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
 import QRCode from 'qrcode';
@@ -20,6 +21,10 @@ const StudentData: React.FC = () => {
     const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
     const [multiPrintStudents, setMultiPrintStudents] = useState<Student[] | null>(null);
 
+    // New state for import/export
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isImporting, setIsImporting] = useState(false);
+    const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | 'idle'; message: string }>({ type: 'idle', message: '' });
 
     const classMap = useMemo(() => new Map(classes.map(c => [c.id, c.name])), [classes]);
 
@@ -163,22 +168,148 @@ const StudentData: React.FC = () => {
         const selected = students.filter(s => selectedStudentIds.has(s.id));
         setMultiPrintStudents(selected);
     };
+    
+    const handleDownloadTemplate = () => {
+        const headers = ['id', 'name', 'class_id', 'nisn', 'pob', 'dob', 'address'];
+        const csvContent = "data:text/csv;charset=utf-8," + headers.join(",");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "template_import_siswa.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleExport = () => {
+        const headers = ['id', 'name', 'class_id', 'nisn', 'pob', 'dob', 'address', 'photo_url'];
+        
+        const rows = students.map(s => [
+            s.id,
+            `"${s.name.replace(/"/g, '""')}"`, // Handle quotes
+            s.classId,
+            s.nisn || '',
+            s.pob || '',
+            s.dob || '',
+            `"${(s.address || '').replace(/"/g, '""')}"`, // Handle quotes
+            s.photoUrl || ''
+        ].join(','));
+        
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join("\n");
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `data_siswa_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setIsImporting(true);
+        setImportStatus({ type: 'idle', message: '' });
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const text = e.target?.result as string;
+                const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+                if (lines.length < 2) throw new Error("File CSV kosong atau hanya berisi header.");
+
+                const headerLine = lines[0].trim();
+                const headers = headerLine.split(',').map(h => h.trim());
+                
+                const requiredHeaders = ['id', 'name', 'class_id'];
+                for (const req of requiredHeaders) {
+                    if (!headers.includes(req)) {
+                        throw new Error(`Header yang dibutuhkan tidak ditemukan: ${req}`);
+                    }
+                }
+
+                const studentsToUpsert: TablesInsert<'students'>[] = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    // Simple CSV parsing, may not handle commas within quoted fields
+                    const values = lines[i].split(',');
+                    const studentData: { [key: string]: any } = {};
+                    headers.forEach((header, index) => {
+                        studentData[header] = values[index]?.trim() || null;
+                    });
+                    
+                    if (!studentData.id || !studentData.name || !studentData.class_id) {
+                         console.warn(`Melewatkan baris ${i + 1} karena data wajib (id, name, class_id) tidak ada.`);
+                         continue;
+                    }
+
+                    studentsToUpsert.push({
+                        id: studentData.id,
+                        name: studentData.name,
+                        class_id: studentData.class_id,
+                        nisn: studentData.nisn,
+                        pob: studentData.pob,
+                        dob: studentData.dob,
+                        address: studentData.address,
+                    });
+                }
+                
+                if (studentsToUpsert.length === 0) throw new Error("Tidak ada data siswa yang valid untuk diimpor.");
+
+                const { error: upsertError } = await supabase.from('students').upsert(studentsToUpsert);
+                if (upsertError) throw upsertError;
+
+                setImportStatus({ type: 'success', message: `${studentsToUpsert.length} data siswa berhasil diimpor/diperbarui.` });
+                await fetchData(); // Refresh list
+
+            } catch (err: any) {
+                setImportStatus({ type: 'error', message: `Gagal mengimpor: ${err.message}` });
+            } finally {
+                setIsImporting(false);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            }
+        };
+
+        reader.onerror = () => {
+             setImportStatus({ type: 'error', message: 'Gagal membaca file.' });
+             setIsImporting(false);
+        };
+        
+        reader.readAsText(file);
+    };
+
 
     return (
         <Card>
             <CardHeader>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <CardTitle>Data Siswa</CardTitle>
-                    <div className="flex gap-2 w-full sm:w-auto">
+                    <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
+                        {user?.role === 'admin' && (
+                            <>
+                                <input type="file" ref={fileInputRef} onChange={handleImport} accept=".csv" style={{ display: 'none' }} />
+                                <button onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition disabled:bg-gray-400">
+                                    {isImporting ? 'Mengimpor...' : 'Impor'}
+                                </button>
+                                <button onClick={handleExport} className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 transition">
+                                    Ekspor
+                                </button>
+                                <button onClick={handleDownloadTemplate} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition">
+                                    Template
+                                </button>
+                            </>
+                        )}
                         <button 
                             onClick={handlePrintSelected} 
                             disabled={selectedStudentIds.size === 0}
-                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition w-full sm:w-auto disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                         >
                             Cetak Kartu ({selectedStudentIds.size})
                         </button>
                         {user?.role === 'admin' && (
-                            <button onClick={() => openModal()} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition w-full sm:w-auto">
+                            <button onClick={() => openModal()} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition">
                                 Tambah Siswa
                             </button>
                         )}
@@ -192,6 +323,11 @@ const StudentData: React.FC = () => {
                 onChange={e => setSearchTerm(e.target.value)}
                 className="w-full px-4 py-2 mb-4 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
             />
+            {importStatus.message && (
+                <div className={`my-4 p-3 rounded-md text-sm ${importStatus.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {importStatus.message}
+                </div>
+            )}
              {loading && <p className="text-center py-4">Memuat data...</p>}
              {error && <p className="text-center py-4 text-red-500">{error}</p>}
              {!loading && !error && (
@@ -361,15 +497,6 @@ const DefaultSchoolLogo = () => (
         <text x="50" y="55" fontFamily="Arial" fontSize="20" fill="#003366" textAnchor="middle" fontWeight="bold">S</text>
     </svg>
 );
-const SchoolSeal = () => (
-    <svg viewBox="0 0 100 100" className="w-20 h-20 opacity-20" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="50" cy="50" r="45" stroke="#003366" strokeWidth="2" fill="none" />
-        <circle cx="50" cy="50" r="40" stroke="#003366" strokeWidth="1" fill="none" strokeDasharray="4 2"/>
-        <text x="50" y="30" textAnchor="middle" fontSize="8" fill="#003366" transform="rotate(-15 50 30)">YAYASAN PENDIDIKAN</text>
-        <text x="50" y="75" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#003366">SEKOLAH</text>
-        <path d="M50 35 l5 10 l-10 0 Z" fill="#003366"/>
-    </svg>
-);
 
 interface MultiQRCodeModalProps {
     students: Student[];
@@ -404,6 +531,8 @@ const MultiQRCodeModal: React.FC<MultiQRCodeModalProps> = ({ students, classMap,
                         headmasterName: data.headmaster_name,
                         schoolCity: data.school_city,
                         logoUrl: data.logo_url,
+                        signatureUrl: data.signature_url,
+                        stampUrl: data.stamp_url,
                     });
                 }
 
@@ -529,14 +658,28 @@ const MultiQRCodeModal: React.FC<MultiQRCodeModalProps> = ({ students, classMap,
                                                 </div>
                                                 <div className="flex-grow"></div>
                                                 <div className="text-center self-end w-40 relative">
-                                                    <div className="absolute -top-8 -left-8"><SchoolSeal/></div>
                                                     <p>{settings.schoolCity || 'Kota'}, {cardIssueDate}</p>
                                                     <p>Kepala Sekolah,</p>
-                                                    <div className="h-10"></div>
+                                                    <div className="h-10 flex justify-center items-center">
+                                                        {settings.signatureUrl && (
+                                                            <img 
+                                                                src={settings.signatureUrl} 
+                                                                alt="Tanda Tangan" 
+                                                                className="h-12 max-w-full object-contain"
+                                                            />
+                                                        )}
+                                                    </div>
                                                     <p className="font-bold underline">{settings.headmasterName || 'Nama Kepala Sekolah'}</p>
                                                 </div>
                                             </div>
                                         </main>
+                                        {settings.stampUrl && (
+                                            <img 
+                                                src={settings.stampUrl} 
+                                                alt="Stempel Sekolah" 
+                                                className="absolute left-[120px] bottom-[40px] w-28 h-28 object-contain opacity-75 pointer-events-none"
+                                            />
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -571,13 +714,14 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
                 return;
             }
             if(data) {
-                // Map snake_case from DB to camelCase for component state
                 setSettings({
                     schoolPhone: data.school_phone,
                     schoolEmail: data.school_email,
                     headmasterName: data.headmaster_name,
                     schoolCity: data.school_city,
                     logoUrl: data.logo_url,
+                    signatureUrl: data.signature_url,
+                    stampUrl: data.stamp_url,
                 });
             }
         };
@@ -588,7 +732,6 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
     
     const formatDate = (dateString?: string) => {
         if (!dateString) return '-';
-        // Add T00:00:00 to ensure date is parsed in local timezone, not UTC
         return new Date(dateString + 'T00:00:00').toLocaleDateString('id-ID', {
             day: 'numeric', month: 'long', year: 'numeric'
         });
@@ -686,14 +829,29 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
                                     </div>
                                     <div className="flex-grow"></div>
                                     <div className="text-center self-end w-40 relative">
-                                        <div className="absolute -top-8 -left-8"><SchoolSeal/></div>
                                         <p>{settings.schoolCity || 'Kota'}, {cardIssueDate}</p>
                                         <p>Kepala Sekolah,</p>
-                                        <div className="h-10"></div>
+                                        <div className="h-10 flex justify-center items-center">
+                                            {settings.signatureUrl && (
+                                                <img 
+                                                    src={settings.signatureUrl} 
+                                                    alt="Tanda Tangan" 
+                                                    className="h-12 max-w-full object-contain"
+                                                />
+                                            )}
+                                        </div>
                                         <p className="font-bold underline">{settings.headmasterName || 'Nama Kepala Sekolah'}</p>
                                     </div>
                                 </div>
                             </main>
+                             {/* Stamp Overlay */}
+                            {settings.stampUrl && (
+                                <img 
+                                    src={settings.stampUrl} 
+                                    alt="Stempel Sekolah" 
+                                    className="absolute left-[120px] bottom-[40px] w-28 h-28 object-contain opacity-75 pointer-events-none"
+                                />
+                            )}
                         </div>
                     </div>
                     <div className="flex justify-end space-x-2 px-4 no-print">

@@ -55,4 +55,6 @@ export interface AppSettings {
     schoolCity?: string;
     logoUrl?: string;
     faviconUrl?: string;
+    signatureUrl?: string;
+    stampUrl?: string;
 }

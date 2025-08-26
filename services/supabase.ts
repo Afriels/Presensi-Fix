@@ -1,4 +1,5 @@
 
+
 import { createClient } from '@supabase/supabase-js';
 
 // SQL to update database schema. Run this in your Supabase SQL Editor.
@@ -27,6 +28,12 @@ ADD COLUMN school_city TEXT;
 ALTER TABLE public.app_settings
 ADD COLUMN logo_url TEXT,
 ADD COLUMN favicon_url TEXT;
+
+-- 4. Add columns for signature and stamp
+ALTER TABLE public.app_settings
+ADD COLUMN signature_url TEXT,
+ADD COLUMN stamp_url TEXT;
+
 
 -- SETUP FOR STUDENT PHOTO UPLOADS (if not done) --
 
@@ -200,6 +207,8 @@ export type Database = {
           school_city: string | null;
           logo_url: string | null;
           favicon_url: string | null;
+          signature_url: string | null;
+          stamp_url: string | null;
         };
         Insert: {
           id?: number;
@@ -216,6 +225,8 @@ export type Database = {
           school_city?: string | null;
           logo_url?: string | null;
           favicon_url?: string | null;
+          signature_url?: string | null;
+          stamp_url?: string | null;
         };
         Update: {
           id?: number;
@@ -232,6 +243,8 @@ export type Database = {
           school_city?: string | null;
           logo_url?: string | null;
           favicon_url?: string | null;
+          signature_url?: string | null;
+          stamp_url?: string | null;
         };
         Relationships: [];
       };

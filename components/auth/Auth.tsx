@@ -58,10 +58,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     useEffect(() => {
-        // onAuthStateChange fires immediately with the initial session, so we don't need a separate getSession() call.
-        // This single listener handles initial load, sign in, and sign out, preventing race conditions.
-        // Fix: The return value structure for onAuthStateChange was different in older versions. Changed `{ data: { subscription } }` to `{ data: subscription }`.
-        const { data: subscription } = supabase.auth.onAuthStateChange(
+        // Clear all session and local storage on every application load/refresh.
+        // This ensures the user must log in again, fulfilling the request for a stateless session.
+        localStorage.clear();
+        sessionStorage.clear();
+
+        // onAuthStateChange will now always start with a null session,
+        // correctly routing the user to the login page via ProtectedRoute.
+        // Fix: Correctly destructure the subscription object from the `data` property to resolve an error on line 105.
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (_event, session) => {
                 if (session?.user) {
                     try {
