@@ -85,9 +85,9 @@ export const getNavLinks = (role: UserRole | undefined): NavLink[] => {
 
 
 export const SOUNDS = {
-    SUCCESS: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
-    ERROR: 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg',
-    WARNING: 'https://actions.google.com/sounds/v1/alarms/dosimeter_alarm.ogg',
-    CAMERA_OPEN: 'https://actions.google.com/sounds/v1/camera/camera_focus_shutter.ogg',
-    CAMERA_CLOSE: 'https://actions.google.com/sounds/v1/camera/vhs_tape_eject.ogg'
+    SUCCESS: 'https://cdn.pixabay.com/audio/2022/03/15/audio_206a0e69a0.mp3',
+    ERROR: 'https://cdn.pixabay.com/audio/2022/03/10/audio_c3894c3a61.mp3',
+    WARNING: 'https://cdn.pixabay.com/audio/2021/08/04/audio_5427871b0c.mp3',
+    CAMERA_OPEN: 'https://cdn.pixabay.com/audio/2022/03/19/audio_d9228c025c.mp3',
+    CAMERA_CLOSE: 'https://cdn.pixabay.com/audio/2022/03/10/audio_62c64f5856.mp3'
 };

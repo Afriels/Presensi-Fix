@@ -186,6 +186,37 @@ const BarcodeScanner: React.FC = () => {
     }
   };
   
+  const handleCameraOpen = async () => {
+    playSound(SOUNDS.CAMERA_OPEN);
+    // Use the Permissions API to check for camera access and provide better UX.
+    if (navigator.permissions && navigator.permissions.query) {
+        try {
+            // The type assertion is a safeguard for environments where PermissionName might not include 'camera'.
+            const permissionStatus = await navigator.permissions.query({ name: 'camera' as PermissionName });
+            
+            if (permissionStatus.state === 'granted' || permissionStatus.state === 'prompt') {
+                // Permission is either already granted or the browser will prompt the user.
+                // In both cases, we can proceed to show the scanner component.
+                setIsScannerVisible(true);
+            } else if (permissionStatus.state === 'denied') {
+                // The user has previously denied camera access. Show a helpful message.
+                setScanResult({
+                    status: 'error',
+                    message: 'Akses kamera ditolak. Mohon izinkan akses kamera di pengaturan browser Anda.'
+                });
+                playSound(SOUNDS.ERROR);
+            }
+        } catch (error) {
+            // If the query fails (e.g., browser doesn't support 'camera' query), fall back to the default behavior.
+            console.error("Error checking camera permission:", error);
+            setIsScannerVisible(true);
+        }
+    } else {
+        // Fallback for older browsers that don't support the Permissions API.
+        setIsScannerVisible(true);
+    }
+  };
+  
   const resultColors = {
     idle: 'bg-gray-100 text-gray-800',
     success: 'bg-green-100 text-green-800',
@@ -227,10 +258,7 @@ const BarcodeScanner: React.FC = () => {
                     />
                 </form>
                 <button
-                    onClick={() => {
-                        playSound(SOUNDS.CAMERA_OPEN);
-                        setIsScannerVisible(true);
-                    }}
+                    onClick={handleCameraOpen}
                     className="px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition flex items-center justify-center w-full sm:w-auto mx-auto shadow-md"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-5 w-5"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>

@@ -1,7 +1,8 @@
 import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { supabase, Enums, Tables } from '../../services/supabase';
-import type { Session, User } from '@supabase/supabase-js';
-import { Navigate, useLocation } from 'react-router-dom';
+// Fix: Import Session and User from @supabase/gotrue-js to resolve module export errors from older @supabase/supabase-js versions.
+import type { Session, User } from '@supabase/gotrue-js';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 type UserProfile = Tables<'profiles'>;
 type UserRole = Enums<'user_role'>;
@@ -29,9 +30,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Explicitly initializing useRef with 'undefined' to satisfy linters or environments
     // that might incorrectly report an error for a no-argument call.
     const logoutTimer = useRef<number | undefined>(undefined);
+    const navigate = useNavigate();
 
     const signOut = async () => {
-        await supabase.auth.signOut();
+        // Immediately clear local state and navigate to login.
+        // This provides a faster, more reliable logout experience than
+        // solely relying on the onAuthStateChange listener.
+        setUser(null);
+        setSession(null);
+        navigate('/login', { replace: true });
+
+        // Perform the sign-out from Supabase in the background.
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            console.error('Error signing out from Supabase:', error);
+        }
     };
 
     const resetLogoutTimer = () => {
@@ -47,7 +60,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         // onAuthStateChange fires immediately with the initial session, so we don't need a separate getSession() call.
         // This single listener handles initial load, sign in, and sign out, preventing race conditions.
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        // Fix: The return value structure for onAuthStateChange was different in older versions. Changed `{ data: { subscription } }` to `{ data: subscription }`.
+        const { data: subscription } = supabase.auth.onAuthStateChange(
             async (_event, session) => {
                 if (session?.user) {
                     try {

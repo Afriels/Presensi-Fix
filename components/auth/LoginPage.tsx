@@ -24,7 +24,8 @@ const LoginPage: React.FC = () => {
         setIsSubmitting(true);
         setError(null);
         try {
-            const { error } = await supabase.auth.signInWithPassword({
+            // Fix: Changed `signInWithPassword` to `signIn` for compatibility with older Supabase JS library versions.
+            const { error } = await supabase.auth.signIn({
                 email,
                 password,
             });
