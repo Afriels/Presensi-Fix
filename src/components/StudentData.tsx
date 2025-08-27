@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import type { Student, Class, AppSettings } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
@@ -507,7 +506,7 @@ const StudentCard: React.FC<{ student: Student; qrCodeUrl: string; settings: Par
     const studentPhoto = student.photoUrl || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3C/svg%3E";
 
     return (
-        <div className="relative w-[500px] h-[315px] bg-white mx-auto overflow-hidden font-sans rounded-xl shadow-lg border border-slate-200 flex flex-col justify-between">
+        <div className="relative w-[500px] h-[315px] bg-white mx-auto overflow-hidden font-sans rounded-xl shadow-lg border border-slate-200 flex flex-col">
             {/* Background Pattern */}
             <div 
                 className="absolute inset-0 opacity-50" 
@@ -518,7 +517,7 @@ const StudentCard: React.FC<{ student: Student; qrCodeUrl: string; settings: Par
             ></div>
 
             {/* Header */}
-            <header className="relative z-10 p-4">
+            <header className="relative z-10 p-4 flex-shrink-0">
                 <div className="absolute top-0 left-0 -z-10">
                     <svg width="500" height="150" viewBox="0 0 500 150" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M-52 62.1146C-28.9221 82.3588 47.9708 123.863 129.5 111.432C211.029 99.001 228.018 -32.4055 352.5 15.2891C476.982 62.9837 537.5 48.4318 537.5 48.4318V-38H-52V62.1146Z" fill="url(#paint0_linear_card_header)"/>
@@ -534,7 +533,7 @@ const StudentCard: React.FC<{ student: Student; qrCodeUrl: string; settings: Par
                     <div className="text-white">
                         <h1 className="text-sm font-bold tracking-wider">KARTU TANDA PELAJAR</h1>
                         <p className="text-xl font-black">{settings.schoolName || 'Nama Sekolah'}</p>
-                        <p className="text-xs">{settings.foundationName || 'Nama Yayasan'}</p>
+                        {settings.foundationName && <p className="text-xs">{settings.foundationName}</p>}
                     </div>
                     <div className="bg-white p-1 rounded-full shadow-md flex-shrink-0">
                         {settings.logoUrl ? (
@@ -547,7 +546,7 @@ const StudentCard: React.FC<{ student: Student; qrCodeUrl: string; settings: Par
             </header>
 
             {/* Body */}
-            <main className="relative z-10 flex items-center px-4 -mt-4">
+            <main className="relative z-10 flex items-center px-4 -mt-4 flex-grow">
                 <div className="flex-shrink-0">
                     <img src={studentPhoto} alt={student.name} className="w-28 h-36 object-cover border-4 border-white bg-slate-200 rounded-lg shadow-md" />
                 </div>
@@ -563,7 +562,7 @@ const StudentCard: React.FC<{ student: Student; qrCodeUrl: string; settings: Par
             </main>
 
             {/* Footer */}
-            <footer className="relative z-10 flex items-end justify-between px-4 pb-3">
+            <footer className="relative z-10 flex items-end justify-between px-4 pb-3 flex-shrink-0">
                  <div className="flex items-center gap-2">
                     {qrCodeUrl ? (
                         <img src={qrCodeUrl} alt="QR Code" className="w-16 h-16 bg-white p-0.5 rounded-md" />
