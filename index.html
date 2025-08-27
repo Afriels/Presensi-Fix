@@ -1,6 +1,5 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full bg-slate-50">
   <head>
     <meta charset="UTF-8" />
     <link id="favicon-link" rel="icon" type="image/svg+xml" href="/vite.svg" />
@@ -8,48 +7,30 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <title>Aplikasi Absensi Siswa</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              'primary': {
-                '50': '#eff6ff',
-                '100': '#dbeafe',
-                '200': '#bfdbfe',
-                '300': '#93c5fd',
-                '400': '#60a5fa',
-                '500': '#3b82f6',
-                '600': '#2563eb',
-                '700': '#1d4ed8',
-                '800': '#1e40af',
-                '900': '#1e3a8a',
-              },
-            }
-          }
-        }
-      }
-    </script>
   <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.1.1",
-    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
-    "react/": "https://esm.sh/react@^19.1.1/",
-    "recharts": "https://esm.sh/recharts@^3.1.2",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.8.1",
-    "qrcode": "https://esm.sh/qrcode@^1.5.3",
-    "html5-qrcode": "https://esm.sh/html5-qrcode@^2.3.8",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.45.0",
-    "@supabase/gotrue-js": "https://aistudiocdn.com/@supabase/gotrue-js@^2.71.1"
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.8.2",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.1.2",
+    "html5-qrcode": "https://aistudiocdn.com/html5-qrcode@^2.3.8",
+    "qrcode": "https://aistudiocdn.com/qrcode@^1.5.4",
+    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.56.0",
+    "vite": "https://aistudiocdn.com/vite@^7.1.3",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.0.1",
+    "tailwindcss/": "https://aistudiocdn.com/tailwindcss@^4.1.12/"
   }
 }
 </script>
 </head>
-  <body class="bg-gray-100">
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+  <body class="h-full antialiased">
+    <div id="root" class="h-full"></div>
+    <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>

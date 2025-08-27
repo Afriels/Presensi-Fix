@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { supabase, Enums, Tables } from '../../services/supabase';
 import type { Session, User } from '@supabase/supabase-js';
@@ -6,9 +7,6 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 type UserProfile = Tables<'profiles'>;
 type UserRole = Enums<'user_role'>;
 
-// Using a type intersection for more robust extension of the Supabase User type.
-// This resolves potential issues with property re-declarations (like 'role')
-// and ensures all properties from the base User type, like 'email', are preserved.
 type AuthUser = User & {
     role: UserRole;
 };
@@ -26,20 +24,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [session, setSession] = useState<Session | null>(null);
     const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
-    // Explicitly initializing useRef with 'undefined' to satisfy linters or environments
-    // that might incorrectly report an error for a no-argument call.
     const logoutTimer = useRef<number | undefined>(undefined);
     const navigate = useNavigate();
 
     const signOut = async () => {
-        // Immediately clear local state and navigate to login.
-        // This provides a faster, more reliable logout experience than
-        // solely relying on the onAuthStateChange listener.
         setUser(null);
         setSession(null);
         navigate('/login', { replace: true });
 
-        // Perform the sign-out from Supabase in the background.
         const { error } = await supabase.auth.signOut();
         if (error) {
             console.error('Error signing out from Supabase:', error);
@@ -57,15 +49,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     useEffect(() => {
-        // Clear all session and local storage on every application load/refresh.
-        // This ensures the user must log in again, fulfilling the request for a stateless session.
         localStorage.clear();
         sessionStorage.clear();
 
-        // onAuthStateChange will now always start with a null session,
-        // correctly routing the user to the login page via ProtectedRoute.
-        // FIX: The destructuring for onAuthStateChange is updated to the correct Supabase v2 format.
-        // Previously `{ data: subscription }` (v1 style) was used, which is incorrect for the imported library version.
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (_event, session) => {
                 if (session?.user) {
@@ -76,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             .eq('id', session.user.id)
                             .single();
 
-                        if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found, which is not a fatal error here
+                        if (error && error.code !== 'PGRST116') {
                             throw error;
                         }
 
@@ -85,19 +71,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         setUser(authUser);
                     } catch (error) {
                         console.error("Error fetching profile on auth change. Signing out.", error);
-                        // If profile fetch fails, sign out to prevent inconsistent/insecure state
                         await supabase.auth.signOut();
                         setSession(null);
                         setUser(null);
                     }
                 } else {
-                    // This handles the SIGNED_OUT event or if there's no initial session.
                     setSession(null);
                     setUser(null);
                 }
                 
-                // The first event fired is INITIAL_SESSION. After that, we are no longer loading.
-                // This guarantees the loading spinner will disappear.
                 setLoading(false);
             }
         );
@@ -107,11 +89,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, []);
 
-    // Effect for auto-logout timer
     useEffect(() => {
         const events = ['mousemove', 'keydown', 'click', 'scroll'];
         
-        if (user) { // Only run the timer if a user is logged in
+        if (user) {
             resetLogoutTimer();
             events.forEach(event => window.addEventListener(event, resetLogoutTimer));
         }
@@ -126,7 +107,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const value = { session, user, loading, signOut };
 
-    // We render children immediately. The loading state is handled by ProtectedRoute.
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
@@ -145,7 +125,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
     if (loading) {
         return (
             <div className="flex justify-center items-center h-screen">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-600"></div>
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-sky-600"></div>
             </div>
         );
     }

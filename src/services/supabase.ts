@@ -3,11 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 // =====================================================================================
 // == KONFIGURASI KONEKSI SUPABASE
 // =====================================================================================
-// PENTING: Ganti nilai placeholder di bawah ini dengan URL dan Kunci Anon
-// dari proyek Supabase Anda. Anda bisa mendapatkannya dari
-// Supabase Dashboard > Project Settings > API.
+// Kredensial telah diatur sesuai dengan yang Anda berikan.
 // =====================================================================================
-const supabaseUrl = 'https://vzcimsvyjzzqrlqlrpwp.supabase.co'; 
+const supabaseUrl = 'https://vzcimsvyjzzqrlqlrpwp.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6Y2ltc3Z5anp6cXJscWxycHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2NjkzOTYsImV4cCI6MjA3MTI0NTM5Nn0.Ru69Z_B4Cg43xYtWjh6lh7tRG03eYoWNYLCCkUsju1U';
 // =====================================================================================
 
@@ -313,7 +311,6 @@ export type Enums<
     ? Database['public']['Enums'][PublicEnumNameOrOptions]
     : never
 
-// The error-throwing check has been removed to allow the application to start.
     
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
     global: {
