@@ -546,7 +546,7 @@ const StudentCard: React.FC<{ student: Student; qrCodeUrl: string; settings: Par
             </header>
 
             {/* Body */}
-            <main className="relative z-10 flex items-center px-4 -mt-4 flex-grow">
+            <main className="relative z-10 flex items-center px-4 -mt-4 flex-grow min-h-0">
                 <div className="flex-shrink-0">
                     <img src={studentPhoto} alt={student.name} className="w-28 h-36 object-cover border-4 border-white bg-slate-200 rounded-lg shadow-md" />
                 </div>
