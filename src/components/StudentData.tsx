@@ -441,7 +441,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, classes, onSave, o
                     </div>
                     <div>
                         <label htmlFor="id" className="block text-sm font-medium text-gray-700">No. Induk Siswa (NIS)</label>
-                        <input type="text" name="id" id="id" value={formData.id} onChange={handleChange} className="mt-1 focus:ring-sky-500 focus:border-sky-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md disabled:bg-gray-100" />
+                        <input type="text" name="id" id="id" value={formData.id} onChange={handleChange} required disabled={!!student} className="mt-1 focus:ring-sky-500 focus:border-sky-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md disabled:bg-gray-100" />
                     </div>
                      <div>
                         <label htmlFor="nisn" className="block text-sm font-medium text-gray-700">NISN</label>
