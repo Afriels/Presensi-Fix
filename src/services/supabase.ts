@@ -130,6 +130,7 @@ export type Database = {
           school_city: string | null;
           logo_url: string | null;
           favicon_url: string | null;
+          // FIX: Add missing signature_url and stamp_url properties
           signature_url: string | null;
           stamp_url: string | null;
         };
@@ -148,6 +149,7 @@ export type Database = {
           school_city?: string | null;
           logo_url?: string | null;
           favicon_url?: string | null;
+          // FIX: Add missing signature_url and stamp_url properties
           signature_url?: string | null;
           stamp_url?: string | null;
         };
@@ -166,6 +168,7 @@ export type Database = {
           school_city?: string | null;
           logo_url?: string | null;
           favicon_url?: string | null;
+          // FIX: Add missing signature_url and stamp_url properties
           signature_url?: string | null;
           stamp_url?: string | null;
         };

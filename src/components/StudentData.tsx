@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import type { Student, Class, AppSettings } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
@@ -525,8 +527,6 @@ const MultiQRCodeModal: React.FC<MultiQRCodeModalProps> = ({ students, classMap,
                         headmasterName: data.headmaster_name,
                         schoolCity: data.school_city,
                         logoUrl: data.logo_url,
-                        signatureUrl: data.signature_url,
-                        stampUrl: data.stamp_url,
                     });
                 }
 
@@ -655,25 +655,11 @@ const MultiQRCodeModal: React.FC<MultiQRCodeModalProps> = ({ students, classMap,
                                                     <p>{settings.schoolCity || 'Kota'}, {cardIssueDate}</p>
                                                     <p>Kepala Sekolah,</p>
                                                     <div className="h-10 flex justify-center items-center">
-                                                        {settings.signatureUrl && (
-                                                            <img 
-                                                                src={settings.signatureUrl} 
-                                                                alt="Tanda Tangan" 
-                                                                className="h-12 max-w-full object-contain"
-                                                            />
-                                                        )}
                                                     </div>
                                                     <p className="font-bold underline">{settings.headmasterName || 'Nama Kepala Sekolah'}</p>
                                                 </div>
                                             </div>
                                         </main>
-                                        {settings.stampUrl && (
-                                            <img 
-                                                src={settings.stampUrl} 
-                                                alt="Stempel Sekolah" 
-                                                className="absolute left-[120px] bottom-[40px] w-28 h-28 object-contain opacity-75 pointer-events-none"
-                                            />
-                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -714,8 +700,6 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
                     headmasterName: data.headmaster_name,
                     schoolCity: data.school_city,
                     logoUrl: data.logo_url,
-                    signatureUrl: data.signature_url,
-                    stampUrl: data.stamp_url,
                 });
             }
         };
@@ -826,26 +810,11 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
                                         <p>{settings.schoolCity || 'Kota'}, {cardIssueDate}</p>
                                         <p>Kepala Sekolah,</p>
                                         <div className="h-10 flex justify-center items-center">
-                                            {settings.signatureUrl && (
-                                                <img 
-                                                    src={settings.signatureUrl} 
-                                                    alt="Tanda Tangan" 
-                                                    className="h-12 max-w-full object-contain"
-                                                />
-                                            )}
                                         </div>
                                         <p className="font-bold underline">{settings.headmasterName || 'Nama Kepala Sekolah'}</p>
                                     </div>
                                 </div>
                             </main>
-                             {/* Stamp Overlay */}
-                            {settings.stampUrl && (
-                                <img 
-                                    src={settings.stampUrl} 
-                                    alt="Stempel Sekolah" 
-                                    className="absolute left-[120px] bottom-[40px] w-28 h-28 object-contain opacity-75 pointer-events-none"
-                                />
-                            )}
                         </div>
                     </div>
                     <div className="flex justify-end space-x-2 px-4 no-print">

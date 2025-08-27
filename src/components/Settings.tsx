@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import type { AppSettings, Class, AcademicYear } from '../types';
 import Card from './ui/Card';
@@ -8,6 +9,7 @@ import { useAuth } from './auth/Auth';
 
 type Tab = 'identitas' | 'jam' | 'kelas' | 'akademik' | 'sistem' | 'users';
 
+// This type now reflects the data returned from our secure RPC function
 type UserProfile = {
     id: string;
     email: string;
@@ -73,12 +75,8 @@ const IdentitySettings: React.FC = () => {
     
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [faviconFile, setFaviconFile] = useState<File | null>(null);
-    const [signatureFile, setSignatureFile] = useState<File | null>(null);
-    const [stampFile, setStampFile] = useState<File | null>(null);
     
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
-    const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
-    const [stampPreview, setStampPreview] = useState<string | null>(null);
     
     const [isSaving, setIsSaving] = useState(false);
 
@@ -101,12 +99,8 @@ const IdentitySettings: React.FC = () => {
                     schoolCity: data.school_city || '',
                     logoUrl: data.logo_url || '',
                     faviconUrl: data.favicon_url || '',
-                    signatureUrl: data.signature_url || '',
-                    stampUrl: data.stamp_url || '',
                 });
                 if (data.logo_url) setLogoPreview(data.logo_url);
-                if (data.signature_url) setSignaturePreview(data.signature_url);
-                if (data.stamp_url) setStampPreview(data.stamp_url);
             }
             setLoading(false);
         };
@@ -117,7 +111,7 @@ const IdentitySettings: React.FC = () => {
         setSettings(prev => ({...prev, [e.target.name]: e.target.value}));
     };
     
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'favicon' | 'signature' | 'stamp') => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'favicon') => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             const reader = new FileReader();
@@ -128,12 +122,6 @@ const IdentitySettings: React.FC = () => {
                     setLogoPreview(result);
                 } else if (type === 'favicon') {
                     setFaviconFile(file);
-                } else if (type === 'signature') {
-                    setSignatureFile(file);
-                    setSignaturePreview(result);
-                } else if (type === 'stamp') {
-                    setStampFile(file);
-                    setStampPreview(result);
                 }
             };
             reader.readAsDataURL(file);
@@ -164,26 +152,6 @@ const IdentitySettings: React.FC = () => {
                 const { data: urlData } = supabase.storage.from('app-assets').getPublicUrl(filePath);
                 faviconUrlToSave = `${urlData.publicUrl}?t=${new Date().getTime()}`;
             }
-
-            let signatureUrlToSave = settings.signatureUrl;
-            if (signatureFile) {
-                const fileExt = signatureFile.name.split('.').pop();
-                const filePath = `signature.${fileExt}`;
-                const { error: uploadError } = await supabase.storage.from('app-assets').upload(filePath, signatureFile, { upsert: true });
-                if (uploadError) throw uploadError;
-                const { data: urlData } = supabase.storage.from('app-assets').getPublicUrl(filePath);
-                signatureUrlToSave = `${urlData.publicUrl}?t=${new Date().getTime()}`;
-            }
-
-            let stampUrlToSave = settings.stampUrl;
-            if (stampFile) {
-                const fileExt = stampFile.name.split('.').pop();
-                const filePath = `stamp.${fileExt}`;
-                const { error: uploadError } = await supabase.storage.from('app-assets').upload(filePath, stampFile, { upsert: true });
-                if (uploadError) throw uploadError;
-                const { data: urlData } = supabase.storage.from('app-assets').getPublicUrl(filePath);
-                stampUrlToSave = `${urlData.publicUrl}?t=${new Date().getTime()}`;
-            }
             
             const settingsToUpdate: TablesUpdate<'app_settings'> = {
                 app_name: settings.appName,
@@ -196,8 +164,6 @@ const IdentitySettings: React.FC = () => {
                 school_city: settings.schoolCity,
                 logo_url: logoUrlToSave,
                 favicon_url: faviconUrlToSave,
-                signature_url: signatureUrlToSave,
-                stamp_url: stampUrlToSave,
             };
             const { error } = await supabase.from('app_settings').update(settingsToUpdate).eq('id', 1);
 
@@ -274,32 +240,6 @@ const IdentitySettings: React.FC = () => {
                             <input type="file" accept="image/x-icon, image/png, image/svg+xml" onChange={(e) => handleFileChange(e, 'favicon')} className="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100" disabled={user?.role !== 'admin'}/>
                         </div>
                      </div>
-                </div>
-
-                <div className="border-t pt-6">
-                    <h3 className="text-lg font-semibold mb-4">Tanda Tangan & Stempel</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Tanda Tangan Kepala Sekolah</label>
-                            <p className="text-xs text-gray-500 mb-2">Gunakan .png transparan untuk hasil terbaik.</p>
-                            {signaturePreview && (
-                                <div className="mt-2 p-2 border rounded-md inline-block bg-gray-100">
-                                    <img src={signaturePreview} alt="Signature Preview" className="h-20 w-auto object-contain" />
-                                </div>
-                            )}
-                            <input type="file" accept="image/png" onChange={(e) => handleFileChange(e, 'signature')} className="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100" disabled={user?.role !== 'admin'} />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Stempel Sekolah</label>
-                            <p className="text-xs text-gray-500 mb-2">Gunakan .png transparan untuk hasil terbaik.</p>
-                            {stampPreview && (
-                                <div className="mt-2 p-2 border rounded-md inline-block">
-                                    <img src={stampPreview} alt="Stamp Preview" className="h-20 w-auto object-contain" />
-                                </div>
-                            )}
-                            <input type="file" accept="image/png" onChange={(e) => handleFileChange(e, 'stamp')} className="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100" disabled={user?.role !== 'admin'} />
-                        </div>
-                    </div>
                 </div>
 
                 {user?.role === 'admin' && (

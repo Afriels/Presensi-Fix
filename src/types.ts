@@ -1,4 +1,5 @@
 
+
 export enum AttendanceStatus {
   HADIR = 'Hadir',
   TERLAMBAT = 'Terlambat',
@@ -55,6 +56,7 @@ export interface AppSettings {
     schoolCity?: string;
     logoUrl?: string;
     faviconUrl?: string;
+    // FIX: Add missing signatureUrl and stampUrl properties
     signatureUrl?: string;
     stampUrl?: string;
 }
