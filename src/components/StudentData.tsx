@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import type { Student, Class, AppSettings } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
@@ -487,12 +485,110 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, classes, onSave, o
 
 const DefaultSchoolLogo = () => (
     <svg viewBox="0 0 100 100" className="w-16 h-16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="50" cy="50" r="48" fill="#FFFFFF" stroke="#003366" strokeWidth="4"/>
-        <path d="M50 15L20 35V75L50 95L80 75V35L50 15Z" fill="#FFD700" stroke="#003366" strokeWidth="2"/>
-        <path d="M50 60L25 47.5V72.5L50 85L75 72.5V47.5L50 60Z" fill="#FFFFFF" stroke="#003366" strokeWidth="2"/>
-        <text x="50" y="55" fontFamily="Arial" fontSize="20" fill="#003366" textAnchor="middle" fontWeight="bold">S</text>
+        <circle cx="50" cy="50" r="48" fill="#FFFFFF" stroke="#0ea5e9" strokeWidth="4"/>
+        <path d="M50 15L20 35V75L50 95L80 75V35L50 15Z" fill="#facc15" stroke="#0ea5e9" strokeWidth="2"/>
+        <path d="M50 60L25 47.5V72.5L50 85L75 72.5V47.5L50 60Z" fill="#FFFFFF" stroke="#0ea5e9" strokeWidth="2"/>
+        <text x="50" y="55" fontFamily="Arial" fontSize="20" fill="#0369a1" textAnchor="middle" fontWeight="bold">S</text>
     </svg>
 );
+
+const StudentCard: React.FC<{ student: Student; qrCodeUrl: string; settings: Partial<AppSettings> }> = ({ student, qrCodeUrl, settings }) => {
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return '-';
+        return new Date(dateString + 'T00:00:00').toLocaleDateString('id-ID', {
+            day: 'numeric', month: 'long', year: 'numeric'
+        });
+    };
+    
+    const cardIssueDate = new Date().toLocaleDateString('id-ID', {
+        day: 'numeric', month: 'long', year: 'numeric'
+    });
+
+    const studentPhoto = student.photoUrl || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3C/svg%3E";
+
+    return (
+        <div className="relative w-[500px] h-[315px] bg-white mx-auto overflow-hidden font-sans rounded-xl shadow-lg border border-slate-200 flex flex-col justify-between">
+            {/* Background Pattern */}
+            <div 
+                className="absolute inset-0 opacity-50" 
+                style={{
+                    backgroundImage: 'radial-gradient(circle, #cbd5e1 0.5px, transparent 0.5px)',
+                    backgroundSize: '10px 10px',
+                }}
+            ></div>
+
+            {/* Header */}
+            <header className="relative z-10 p-4">
+                <div className="absolute top-0 left-0 -z-10">
+                    <svg width="500" height="150" viewBox="0 0 500 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M-52 62.1146C-28.9221 82.3588 47.9708 123.863 129.5 111.432C211.029 99.001 228.018 -32.4055 352.5 15.2891C476.982 62.9837 537.5 48.4318 537.5 48.4318V-38H-52V62.1146Z" fill="url(#paint0_linear_card_header)"/>
+                        <defs>
+                        <linearGradient id="paint0_linear_card_header" x1="242.75" y1="-38" x2="242.75" y2="111.432" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#38bdf8"/>
+                        <stop offset="1" stopColor="#0ea5e9"/>
+                        </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div className="flex justify-between items-center">
+                    <div className="text-white">
+                        <h1 className="text-sm font-bold tracking-wider">KARTU TANDA PELAJAR</h1>
+                        <p className="text-xl font-black">{settings.schoolName || 'Nama Sekolah'}</p>
+                        <p className="text-xs">{settings.foundationName || 'Nama Yayasan'}</p>
+                    </div>
+                    <div className="bg-white p-1 rounded-full shadow-md flex-shrink-0">
+                        {settings.logoUrl ? (
+                            <img src={settings.logoUrl} alt="Logo Sekolah" className="w-16 h-16 object-contain" />
+                        ) : (
+                            <DefaultSchoolLogo />
+                        )}
+                    </div>
+                </div>
+            </header>
+
+            {/* Body */}
+            <main className="relative z-10 flex items-center px-4 -mt-4">
+                <div className="flex-shrink-0">
+                    <img src={studentPhoto} alt={student.name} className="w-28 h-36 object-cover border-4 border-white bg-slate-200 rounded-lg shadow-md" />
+                </div>
+                <div className="pl-4 flex-grow">
+                    <h2 className="text-2xl font-bold leading-tight tracking-tight text-slate-900">{student.name}</h2>
+                    <p className="text-slate-500 font-medium mb-2">NIS: {student.id}</p>
+                    <div className="grid grid-cols-[max-content,1fr] gap-x-2 gap-y-0.5 text-xs text-slate-700">
+                        <strong className="font-semibold">NISN</strong><span>: {student.nisn || '-'}</span>
+                        <strong className="font-semibold">TTL</strong><span className="truncate">: {`${student.pob || ''}, ${formatDate(student.dob)}`}</span>
+                        <strong className="font-semibold">Alamat</strong><span className="truncate">: {student.address || '-'}</span>
+                    </div>
+                </div>
+            </main>
+
+            {/* Footer */}
+            <footer className="relative z-10 flex items-end justify-between px-4 pb-3">
+                 <div className="flex items-center gap-2">
+                    {qrCodeUrl ? (
+                        <img src={qrCodeUrl} alt="QR Code" className="w-16 h-16 bg-white p-0.5 rounded-md" />
+                     ) : (
+                        <div className="w-16 h-16 bg-slate-200 animate-pulse rounded-md"></div>
+                     )}
+                     <p className="text-[9px] text-slate-500 max-w-[80px]">Berlaku selama menjadi siswa/i aktif.</p>
+                 </div>
+                <div className="text-center text-xs relative w-40">
+                    <p>{settings.schoolCity || 'Kota'}, {cardIssueDate}</p>
+                    <p>Kepala Sekolah,</p>
+                    <div className="h-10 relative flex justify-center items-center">
+                        {settings.stampUrl && (
+                            <img src={settings.stampUrl} alt="Stempel Sekolah" className="absolute inset-0 w-full h-full object-contain opacity-70" />
+                        )}
+                        {settings.signatureUrl && (
+                            <img src={settings.signatureUrl} alt="Tanda Tangan" className="relative z-10 h-10 max-w-full object-contain" />
+                        )}
+                    </div>
+                    <p className="font-bold underline">{settings.headmasterName || 'Nama Kepala Sekolah'}</p>
+                </div>
+            </footer>
+        </div>
+    );
+};
 
 interface MultiQRCodeModalProps {
     students: Student[];
@@ -522,11 +618,13 @@ const MultiQRCodeModal: React.FC<MultiQRCodeModalProps> = ({ students, classMap,
                 if (error && error.code !== 'PGRST116') throw error;
                 if(data) {
                     setSettings({
-                        schoolPhone: data.school_phone,
-                        schoolEmail: data.school_email,
+                        schoolName: data.school_name,
+                        foundationName: data.foundation_name,
                         headmasterName: data.headmaster_name,
                         schoolCity: data.school_city,
                         logoUrl: data.logo_url,
+                        signatureUrl: data.signature_url,
+                        stampUrl: data.stamp_url,
                     });
                 }
 
@@ -549,17 +647,6 @@ const MultiQRCodeModal: React.FC<MultiQRCodeModalProps> = ({ students, classMap,
     }, [students]);
 
     const handlePrint = () => window.print();
-
-    const formatDate = (dateString?: string) => {
-        if (!dateString) return '-';
-        return new Date(dateString + 'T00:00:00').toLocaleDateString('id-ID', {
-            day: 'numeric', month: 'long', year: 'numeric'
-        });
-    };
-    
-    const cardIssueDate = new Date().toLocaleDateString('id-ID', {
-        day: 'numeric', month: 'long', year: 'numeric'
-    });
 
     return (
         <>
@@ -600,9 +687,6 @@ const MultiQRCodeModal: React.FC<MultiQRCodeModalProps> = ({ students, classMap,
                     display: none !important;
                   }
                 }
-                .text-shadow-white {
-                    text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
-                }
                 `}
             </style>
             <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-start p-4 overflow-y-auto printable-area-multi">
@@ -622,44 +706,12 @@ const MultiQRCodeModal: React.FC<MultiQRCodeModalProps> = ({ students, classMap,
                          ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {students.map(student => (
-                                    <div key={student.id}
-                                        className="printable-card-multi relative w-[500px] h-[315px] bg-white mx-auto overflow-hidden font-sans border-2 border-gray-300 rounded-lg flex flex-col"
-                                    >
-                                        <div className="absolute top-0 left-0 right-0 h-[80px] bg-gradient-to-b from-blue-400 to-blue-600 rounded-b-full transform scale-x-150"></div>
-                                        <header className="relative z-10 flex items-center p-2 text-white">
-                                            <div className="bg-white p-1 rounded-md shadow-md flex-shrink-0">
-                                                {settings.logoUrl ? <img src={settings.logoUrl} alt="Logo" className="w-16 h-16 object-contain" /> : <DefaultSchoolLogo />}
-                                            </div>
-                                            <div className="ml-2 text-center flex-grow">
-                                                <h1 className="text-2xl font-black text-red-600 text-shadow-white tracking-wide">KARTU TANDA PELAJAR</h1>
-                                                <p className="text-[8px] leading-tight">{`Telp. ${settings.schoolPhone || '-'} | email: ${settings.schoolEmail || '-'}`}</p>
-                                            </div>
-                                        </header>
-                                        <main className="flex-grow flex p-2 text-xs z-10">
-                                            <div className="w-1/3 flex flex-col items-center text-center">
-                                                <img src={student.photoUrl || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3C/svg%3E"} alt={student.name} className="w-24 h-28 object-cover border-2 border-gray-700 bg-gray-200" />
-                                                <div className="flex-grow" />
-                                                <img src={qrCodeUrls.get(student.id) || ''} alt="QR Code" className="w-20 h-20" />
-                                                <p className="text-[8px] font-semibold mt-auto">Berlaku Selama Menjadi Siswa</p>
-                                            </div>
-                                            <div className="w-2/3 pl-2 flex flex-col">
-                                                <div className="grid grid-cols-[max-content,auto] gap-x-2 gap-y-0 leading-tight">
-                                                    <strong>No. Induk</strong><p>: {student.id}</p>
-                                                    <strong>NISN</strong><p>: {student.nisn || '-'}</p>
-                                                    <strong>Nama Siswa</strong><p>: {student.name}</p>
-                                                    <strong>Tempat/Tgl. Lahir</strong><p>: {`${student.pob || ''}, ${formatDate(student.dob)}`}</p>
-                                                    <strong>Alamat</strong><p className="break-words">: {student.address || '-'}</p>
-                                                </div>
-                                                <div className="flex-grow"></div>
-                                                <div className="text-center self-end w-40 relative">
-                                                    <p>{settings.schoolCity || 'Kota'}, {cardIssueDate}</p>
-                                                    <p>Kepala Sekolah,</p>
-                                                    <div className="h-10 flex justify-center items-center">
-                                                    </div>
-                                                    <p className="font-bold underline">{settings.headmasterName || 'Nama Kepala Sekolah'}</p>
-                                                </div>
-                                            </div>
-                                        </main>
+                                    <div key={student.id} className="printable-card-multi">
+                                        <StudentCard 
+                                            student={student} 
+                                            qrCodeUrl={qrCodeUrls.get(student.id) || ''} 
+                                            settings={settings} 
+                                        />
                                     </div>
                                 ))}
                             </div>
@@ -695,11 +747,13 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
             }
             if(data) {
                 setSettings({
-                    schoolPhone: data.school_phone,
-                    schoolEmail: data.school_email,
+                    schoolName: data.school_name,
+                    foundationName: data.foundation_name,
                     headmasterName: data.headmaster_name,
                     schoolCity: data.school_city,
                     logoUrl: data.logo_url,
+                    signatureUrl: data.signature_url,
+                    stampUrl: data.stamp_url,
                 });
             }
         };
@@ -707,20 +761,6 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
     }, [student.id]);
 
     const handlePrint = () => window.print();
-    
-    const formatDate = (dateString?: string) => {
-        if (!dateString) return '-';
-        return new Date(dateString + 'T00:00:00').toLocaleDateString('id-ID', {
-            day: 'numeric', month: 'long', year: 'numeric'
-        });
-    };
-    
-    const cardIssueDate = new Date().toLocaleDateString('id-ID', {
-        day: 'numeric', month: 'long', year: 'numeric'
-    });
-
-    const studentPhoto = student.photoUrl || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3C/svg%3E";
-
 
     return (
         <>
@@ -754,67 +794,13 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
                     display: none !important;
                   }
                 }
-                .text-shadow-white {
-                    text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
-                }
                 `}
             </style>
             <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 printable-area">
                 <div className="bg-white rounded-lg shadow-xl w-full max-w-lg pb-4">
                     <div className="overflow-x-auto p-4">
-                        <div 
-                            className="printable-card relative w-[500px] h-[315px] bg-white mx-auto overflow-hidden font-sans border-2 border-gray-300 rounded-lg flex flex-col"
-                        >
-                           {/* Header */}
-                            <div className="absolute top-0 left-0 right-0 h-[80px] bg-gradient-to-b from-blue-400 to-blue-600 rounded-b-full transform scale-x-150"></div>
-                            <header className="relative z-10 flex items-center p-2 text-white">
-                                <div className="bg-white p-1 rounded-md shadow-md flex-shrink-0">
-                                    {settings.logoUrl ? (
-                                        <img src={settings.logoUrl} alt="Logo Sekolah" className="w-16 h-16 object-contain" />
-                                    ) : (
-                                        <DefaultSchoolLogo />
-                                    )}
-                                </div>
-                                <div className="ml-2 text-center flex-grow">
-                                    <h1 className="text-2xl font-black text-red-600 text-shadow-white tracking-wide">KARTU TANDA PELAJAR</h1>
-                                    <p className="text-[8px] leading-tight">
-                                        {`Telp. ${settings.schoolPhone || '-'} | email: ${settings.schoolEmail || '-'}`}
-                                    </p>
-                                </div>
-                            </header>
-
-                            {/* Body */}
-                            <main className="flex-grow flex p-2 text-xs z-10">
-                                {/* Left Column */}
-                                <div className="w-1/3 flex flex-col items-center text-center">
-                                    <img src={studentPhoto} alt={student.name} className="w-24 h-28 object-cover border-2 border-gray-700 bg-gray-200" />
-                                     <div className="flex-grow" />
-                                     {qrCodeUrl ? (
-                                        <img src={qrCodeUrl} alt="QR Code" className="w-20 h-20" />
-                                     ) : (
-                                        <div className="w-20 h-20 bg-gray-200 animate-pulse"></div>
-                                     )}
-                                    <p className="text-[8px] font-semibold mt-auto">Berlaku Selama Menjadi Siswa</p>
-                                </div>
-                                {/* Right Column */}
-                                <div className="w-2/3 pl-2 flex flex-col">
-                                    <div className="grid grid-cols-[max-content,auto] gap-x-2 gap-y-0 leading-tight">
-                                        <strong>No. Induk</strong><p>: {student.id}</p>
-                                        <strong>NISN</strong><p>: {student.nisn || '-'}</p>
-                                        <strong>Nama Siswa</strong><p>: {student.name}</p>
-                                        <strong>Tempat/Tgl. Lahir</strong><p>: {`${student.pob || ''}, ${formatDate(student.dob)}`}</p>
-                                        <strong>Alamat</strong><p className="break-words">: {student.address || '-'}</p>
-                                    </div>
-                                    <div className="flex-grow"></div>
-                                    <div className="text-center self-end w-40 relative">
-                                        <p>{settings.schoolCity || 'Kota'}, {cardIssueDate}</p>
-                                        <p>Kepala Sekolah,</p>
-                                        <div className="h-10 flex justify-center items-center">
-                                        </div>
-                                        <p className="font-bold underline">{settings.headmasterName || 'Nama Kepala Sekolah'}</p>
-                                    </div>
-                                </div>
-                            </main>
+                        <div className="printable-card">
+                           <StudentCard student={student} qrCodeUrl={qrCodeUrl} settings={settings} />
                         </div>
                     </div>
                     <div className="flex justify-end space-x-2 px-4 no-print">
