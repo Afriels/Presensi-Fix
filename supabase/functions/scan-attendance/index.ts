@@ -1,7 +1,12 @@
-// FIX: Add Deno types reference for Supabase Edge Functions.
-/// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
-
-// supabase/functions/scan-attendance/index.ts
+// FIX: Removed invalid type reference. Added a manual declaration for the Deno global
+// to make standard TypeScript compilers aware of the Deno-specific APIs which are
+// available in the Supabase Functions runtime environment.
+declare const Deno: {
+  serve(handler: (req: Request) => Response | Promise<Response>): void;
+  env: {
+    get(key: string): string | undefined;
+  };
+};
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
@@ -11,7 +16,7 @@ import { corsHeaders } from '../_shared/cors.ts'
 const API_SECRET_KEY = "KUNCI_RAHASIA_ANDA_DISINI_12345"; 
 
 Deno.serve(async (req) => {
-  // Tangani preflight request untuk CORS
+  // Tangani preflight request untuk CORS. Ini wajib ada.
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
