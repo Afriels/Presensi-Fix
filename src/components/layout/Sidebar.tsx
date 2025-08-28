@@ -48,7 +48,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, setIsSidebarOpen }) =>
           <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
         </div>
         <button 
-          onClick={signOut} 
+          onClick={() => signOut()} 
           className="p-2 text-slate-500 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors"
           title="Logout"
         >

@@ -15,7 +15,7 @@ interface AuthContextType {
     session: Session | null;
     user: AuthUser | null;
     loading: boolean;
-    signOut: () => Promise<void>;
+    signOut: (options?: { message?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,10 +27,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const logoutTimer = useRef<number | undefined>(undefined);
     const navigate = useNavigate();
 
-    const signOut = async () => {
+    const signOut = async (options?: { message?: string }) => {
         setUser(null);
         setSession(null);
-        navigate('/login', { replace: true });
+        navigate('/login', {
+            replace: true,
+            state: options?.message ? { message: options.message } : undefined,
+        });
 
         const { error } = await supabase.auth.signOut();
         if (error) {
@@ -44,14 +47,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         logoutTimer.current = window.setTimeout(() => {
             console.log("Auto-logging out due to inactivity.");
-            signOut();
-        }, 10 * 60 * 1000); // 10 minutes
+            signOut({ message: 'Sesi Anda telah berakhir karena tidak ada aktivitas.' });
+        }, 60 * 60 * 1000); // 60 minutes
     };
 
     useEffect(() => {
-        localStorage.clear();
-        sessionStorage.clear();
-
+        // This effect now correctly allows Supabase to manage session persistence.
+        // The aggressive localStorage.clear() has been removed to fix JWT errors.
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (_event, session) => {
                 if (session?.user) {
@@ -103,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             events.forEach(event => window.removeEventListener(event, resetLogoutTimer));
         };
-    }, [user]);
+    }, [user, signOut]); // Add signOut to dependency array
     
     const value = { session, user, loading, signOut };
 
@@ -124,7 +126,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-screen">
+            <div className="flex justify-center items-center h-screen bg-slate-50">
                 <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-sky-600"></div>
             </div>
         );

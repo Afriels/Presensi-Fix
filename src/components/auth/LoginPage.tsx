@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
 import { SchoolIcon } from '../../constants';
 import { useAuth } from './Auth';
@@ -8,10 +8,12 @@ import { useAuth } from './Auth';
 const LoginPage: React.FC = () => {
     const { session, loading: authLoading } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [infoMessage, setInfoMessage] = useState<string | null>(location.state?.message || null);
 
     useEffect(() => {
         if (session && !authLoading) {
@@ -23,6 +25,7 @@ const LoginPage: React.FC = () => {
         e.preventDefault();
         setIsSubmitting(true);
         setError(null);
+        setInfoMessage(null); // Clear info message on new login attempt
         try {
             const { error } = await supabase.auth.signInWithPassword({
                 email,
@@ -38,7 +41,7 @@ const LoginPage: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="flex justify-center items-center">
                     <SchoolIcon className="h-12 w-12 text-sky-600"/>
@@ -49,7 +52,12 @@ const LoginPage: React.FC = () => {
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+                <div className="bg-white py-8 px-4 shadow-xl sm:rounded-lg sm:px-10">
+                    {infoMessage && (
+                        <div className="mb-4 bg-sky-50 border-l-4 border-sky-400 p-4">
+                            <p className="text-sm text-sky-800">{infoMessage}</p>
+                        </div>
+                    )}
                     <form className="space-y-6" onSubmit={handleLogin}>
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
