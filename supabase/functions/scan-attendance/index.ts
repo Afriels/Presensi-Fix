@@ -13,7 +13,7 @@ import { corsHeaders } from '../_shared/cors.ts'
 
 // !! PENTING: Ganti ini dengan password/kunci rahasia yang Anda inginkan.
 // Ini akan menjadi "password" yang Anda masukkan di aplikasi App Inventor.
-const API_SECRET_KEY = "KUNCI_RAHASIA_ANDA_DISINI_12345"; 
+const API_SECRET_KEY = "TOKEN_12345"; 
 
 Deno.serve(async (req) => {
   // Tangani preflight request untuk CORS. Ini wajib ada.

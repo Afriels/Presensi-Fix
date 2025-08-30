@@ -140,6 +140,28 @@ const StudentData: React.FC = () => {
         }
     };
 
+    const handleDownloadQR = async (student: Student) => {
+        try {
+            const qrCodeUrl = await QRCode.toDataURL(student.id, {
+                width: 512, // Larger size for better quality
+                margin: 2,
+                errorCorrectionLevel: 'H'
+            });
+
+            const link = document.createElement('a');
+            link.href = qrCodeUrl;
+            link.download = `qrcode-${student.id}-${student.name.replace(/\s+/g, '_')}.png`;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+        } catch (err) {
+            console.error("Failed to generate and download QR code", err);
+            alert("Gagal membuat QR code untuk diunduh.");
+        }
+    };
+
     const handleSelectStudent = (id: string) => {
         const newSelection = new Set(selectedStudentIds);
         if (newSelection.has(id)) {
@@ -367,6 +389,7 @@ const StudentData: React.FC = () => {
                                                     <button onClick={() => handleDelete(student.id)} className="text-red-600 hover:text-red-900">Hapus</button>
                                                 </>
                                             )}
+                                            <button onClick={() => handleDownloadQR(student)} className="text-indigo-600 hover:text-indigo-900">Download QR</button>
                                             <button onClick={() => setQrStudent(student)} className="text-green-600 hover:text-green-900">Cetak Kartu</button>
                                         </div>
                                     </td>
