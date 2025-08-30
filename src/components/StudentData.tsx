@@ -4,6 +4,8 @@ import Card, { CardHeader, CardTitle } from './ui/Card';
 import QRCode from 'qrcode';
 import { supabase, TablesInsert, TablesUpdate } from '../services/supabase';
 import { useAuth } from './auth/Auth';
+// FIX: Corrected the import path to point to the constants file within the src directory.
+import { PencilIcon, TrashIcon, DownloadIcon, IdCardIcon } from '../constants';
 
 const StudentData: React.FC = () => {
     const { user } = useAuth();
@@ -381,16 +383,23 @@ const StudentData: React.FC = () => {
                                     <td id={`student-name-${student.id}`} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classMap.get(student.classId) || 'Tidak ada kelas'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <div className="flex justify-end items-center gap-4">
+                                        <div className="flex justify-end items-center gap-1">
                                             {user?.role === 'admin' && (
                                                 <>
-                                                    <button onClick={() => openModal(student)} className="text-sky-600 hover:text-sky-900">Edit</button>
-                                                    <button onClick={() => handleDelete(student.id)} className="text-red-600 hover:text-red-900">Hapus</button>
-                                                    <button onClick={() => handleDownloadQR(student)} className="text-indigo-600 hover:text-indigo-900">Download QR</button>
+                                                    <button onClick={() => openModal(student)} title="Edit Siswa" className="p-2 text-sky-600 hover:bg-sky-100 rounded-md transition-colors">
+                                                        <PencilIcon className="h-4 w-4" />
+                                                    </button>
+                                                    <button onClick={() => handleDelete(student.id)} title="Hapus Siswa" className="p-2 text-red-600 hover:bg-red-100 rounded-md transition-colors">
+                                                        <TrashIcon className="h-4 w-4" />
+                                                    </button>
+                                                    <button onClick={() => handleDownloadQR(student)} title="Unduh QR Code" className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-md transition-colors">
+                                                        <DownloadIcon className="h-4 w-4" />
+                                                    </button>
                                                 </>
                                             )}
-                                            
-                                            <button onClick={() => setQrStudent(student)} className="text-green-600 hover:text-green-900">Cetak Kartu</button>
+                                            <button onClick={() => setQrStudent(student)} title="Cetak Kartu Siswa" className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-md transition-colors">
+                                                <IdCardIcon className="h-4 w-4" />
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
