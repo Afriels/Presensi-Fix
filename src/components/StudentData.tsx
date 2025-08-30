@@ -386,9 +386,10 @@ const StudentData: React.FC = () => {
                                                 <>
                                                     <button onClick={() => openModal(student)} className="text-sky-600 hover:text-sky-900">Edit</button>
                                                     <button onClick={() => handleDelete(student.id)} className="text-red-600 hover:text-red-900">Hapus</button>
+                                                    <button onClick={() => handleDownloadQR(student)} className="text-indigo-600 hover:text-indigo-900">Download QR</button>
                                                 </>
                                             )}
-                                            <button onClick={() => handleDownloadQR(student)} className="text-indigo-600 hover:text-indigo-900">Download QR</button>
+                                            
                                             <button onClick={() => setQrStudent(student)} className="text-green-600 hover:text-green-900">Cetak Kartu</button>
                                         </div>
                                     </td>
