@@ -1,12 +1,18 @@
-
-
-
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import type { Student, Class, AppSettings } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';
 import QRCode from 'qrcode';
 import { supabase, TablesInsert, TablesUpdate } from '../services/supabase';
 import { useAuth } from './auth/Auth';
+// FIX: Corrected the import path to point to the constants file within the src directory.
+import { PencilIcon, TrashIcon, DownloadIcon, IdCardIcon } from '../constants';
+
+// Helper component for consistent action button styling
+const ActionButton: React.FC<{ onClick: () => void; title: string; className: string; children: React.ReactNode }> = ({ onClick, title, className, children }) => (
+    <button onClick={onClick} title={title} className={`p-2 rounded-md transition-colors ${className}`}>
+        {children}
+    </button>
+);
 
 const StudentData: React.FC = () => {
     const { user } = useAuth();
@@ -21,7 +27,6 @@ const StudentData: React.FC = () => {
     const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
     const [multiPrintStudents, setMultiPrintStudents] = useState<Student[] | null>(null);
 
-    // New state for import/export
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isImporting, setIsImporting] = useState(false);
     const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | 'idle'; message: string }>({ type: 'idle', message: '' });
@@ -73,7 +78,6 @@ const StudentData: React.FC = () => {
     }, [students, searchTerm]);
 
     useEffect(() => {
-        // Clear selection if filtered students change
         setSelectedStudentIds(new Set());
     }, [searchTerm]);
 
@@ -137,11 +141,32 @@ const StudentData: React.FC = () => {
                     .delete()
                     .eq('id', studentId);
                 if(error) throw error;
-                // Optimistic UI update
                 setStudents(prev => prev.filter(s => s.id !== studentId));
             } catch(err: any) {
                 alert('Gagal menghapus data: ' + err.message);
             }
+        }
+    };
+
+    const handleDownloadQR = async (student: Student) => {
+        try {
+            const qrCodeUrl = await QRCode.toDataURL(student.id, {
+                width: 512, // Larger size for better quality
+                margin: 2,
+                errorCorrectionLevel: 'H'
+            });
+
+            const link = document.createElement('a');
+            link.href = qrCodeUrl;
+            link.download = `qrcode-${student.id}-${student.name.replace(/\s+/g, '_')}.png`;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+        } catch (err) {
+            console.error("Failed to generate and download QR code", err);
+            alert("Gagal membuat QR code untuk diunduh.");
         }
     };
 
@@ -186,12 +211,12 @@ const StudentData: React.FC = () => {
         
         const rows = students.map(s => [
             s.id,
-            `"${s.name.replace(/"/g, '""')}"`, // Handle quotes
+            `"${s.name.replace(/"/g, '""')}"`,
             s.classId,
             s.nisn || '',
             s.pob || '',
             s.dob || '',
-            `"${(s.address || '').replace(/"/g, '""')}"`, // Handle quotes
+            `"${(s.address || '').replace(/"/g, '""')}"`,
             s.photoUrl || ''
         ].join(','));
         
@@ -233,7 +258,6 @@ const StudentData: React.FC = () => {
                 const studentsToUpsert: TablesInsert<'students'>[] = [];
 
                 for (let i = 1; i < lines.length; i++) {
-                    // Simple CSV parsing, may not handle commas within quoted fields
                     const values = lines[i].split(',');
                     const studentData: { [key: string]: any } = {};
                     headers.forEach((header, index) => {
@@ -262,7 +286,7 @@ const StudentData: React.FC = () => {
                 if (upsertError) throw upsertError;
 
                 setImportStatus({ type: 'success', message: `${studentsToUpsert.length} data siswa berhasil diimpor/diperbarui.` });
-                await fetchData(); // Refresh list
+                await fetchData();
 
             } catch (err: any) {
                 setImportStatus({ type: 'error', message: `Gagal mengimpor: ${err.message}` });
@@ -290,7 +314,7 @@ const StudentData: React.FC = () => {
                         {user?.role === 'admin' && (
                             <>
                                 <input type="file" ref={fileInputRef} onChange={handleImport} accept=".csv" style={{ display: 'none' }} />
-                                <button onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition disabled:bg-gray-400">
+                                <button onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 transition disabled:bg-gray-400">
                                     {isImporting ? 'Mengimpor...' : 'Impor'}
                                 </button>
                                 <button onClick={handleExport} className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 transition">
@@ -304,12 +328,12 @@ const StudentData: React.FC = () => {
                         <button 
                             onClick={handlePrintSelected} 
                             disabled={selectedStudentIds.size === 0}
-                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                         >
                             Cetak Kartu ({selectedStudentIds.size})
                         </button>
                         {user?.role === 'admin' && (
-                            <button onClick={() => openModal()} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition">
+                            <button onClick={() => openModal()} className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition">
                                 Tambah Siswa
                             </button>
                         )}
@@ -321,7 +345,7 @@ const StudentData: React.FC = () => {
                 placeholder="Cari nama atau NIS siswa..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-2 mb-4 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 mb-4 border border-gray-300 rounded-md focus:ring-sky-500 focus:border-sky-500"
             />
             {importStatus.message && (
                 <div className={`my-4 p-3 rounded-md text-sm ${importStatus.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -338,7 +362,7 @@ const StudentData: React.FC = () => {
                                 <th className="px-4 py-3 text-left">
                                     <input
                                         type="checkbox"
-                                        className="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
+                                        className="rounded border-gray-300 text-sky-600 shadow-sm focus:border-sky-300 focus:ring focus:ring-sky-200 focus:ring-opacity-50"
                                         onChange={handleSelectAll}
                                         checked={filteredStudents.length > 0 && selectedStudentIds.size === filteredStudents.length}
                                         aria-label="Select all students"
@@ -356,7 +380,7 @@ const StudentData: React.FC = () => {
                                     <td className="px-4 py-4 whitespace-nowrap">
                                         <input
                                             type="checkbox"
-                                            className="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
+                                            className="rounded border-gray-300 text-sky-600 shadow-sm focus:border-sky-300 focus:ring focus:ring-sky-200 focus:ring-opacity-50"
                                             checked={selectedStudentIds.has(student.id)}
                                             onChange={() => handleSelectStudent(student.id)}
                                             aria-labelledby={`student-name-${student.id}`}
@@ -366,14 +390,23 @@ const StudentData: React.FC = () => {
                                     <td id={`student-name-${student.id}`} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classMap.get(student.classId) || 'Tidak ada kelas'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <div className="flex justify-end items-center gap-4">
+                                        <div className="flex justify-end items-center gap-1">
                                             {user?.role === 'admin' && (
                                                 <>
-                                                    <button onClick={() => openModal(student)} className="text-primary-600 hover:text-primary-900">Edit</button>
-                                                    <button onClick={() => handleDelete(student.id)} className="text-red-600 hover:text-red-900">Hapus</button>
+                                                    <ActionButton onClick={() => openModal(student)} title="Edit Siswa" className="text-sky-600 hover:bg-sky-100">
+                                                        <PencilIcon className="h-4 w-4" />
+                                                    </ActionButton>
+                                                    <ActionButton onClick={() => handleDelete(student.id)} title="Hapus Siswa" className="text-red-600 hover:bg-red-100">
+                                                        <TrashIcon className="h-4 w-4" />
+                                                    </ActionButton>
                                                 </>
                                             )}
-                                            <button onClick={() => setQrStudent(student)} className="text-green-600 hover:text-green-900">Cetak Kartu</button>
+                                            <ActionButton onClick={() => handleDownloadQR(student)} title="Unduh QR Code" className="text-indigo-600 hover:bg-indigo-100">
+                                                <DownloadIcon className="h-4 w-4" />
+                                            </ActionButton>
+                                            <ActionButton onClick={() => setQrStudent(student)} title="Cetak Kartu Siswa" className="text-emerald-600 hover:bg-emerald-100">
+                                                <IdCardIcon className="h-4 w-4" />
+                                            </ActionButton>
                                         </div>
                                     </td>
                                 </tr>
@@ -444,42 +477,42 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, classes, onSave, o
                     </div>
                      <div>
                         <label htmlFor="photoUrl" className="block text-sm font-medium text-gray-700">Foto Siswa</label>
-                        <input type="file" name="photoUrl" id="photoUrl" accept="image/png, image/jpeg" onChange={handlePhotoChange} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"/>
+                        <input type="file" name="photoUrl" id="photoUrl" accept="image/png, image/jpeg" onChange={handlePhotoChange} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"/>
                     </div>
                     <div>
                         <label htmlFor="id" className="block text-sm font-medium text-gray-700">No. Induk Siswa (NIS)</label>
-                        <input type="text" name="id" id="id" value={formData.id} onChange={handleChange} required disabled={!!student} className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md disabled:bg-gray-100" />
+                        <input type="text" name="id" id="id" value={formData.id} onChange={handleChange} required disabled={!!student} className="mt-1 focus:ring-sky-500 focus:border-sky-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md disabled:bg-gray-100" />
                     </div>
                      <div>
                         <label htmlFor="nisn" className="block text-sm font-medium text-gray-700">NISN</label>
-                        <input type="text" name="nisn" id="nisn" value={formData.nisn || ''} onChange={handleChange} className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                        <input type="text" name="nisn" id="nisn" value={formData.nisn || ''} onChange={handleChange} className="mt-1 focus:ring-sky-500 focus:border-sky-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
                     </div>
                     <div>
                         <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nama Lengkap</label>
-                        <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} required className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                        <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} required className="mt-1 focus:ring-sky-500 focus:border-sky-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
                     </div>
                      <div>
                         <label htmlFor="pob" className="block text-sm font-medium text-gray-700">Tempat Lahir</label>
-                        <input type="text" name="pob" id="pob" value={formData.pob || ''} onChange={handleChange} className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                        <input type="text" name="pob" id="pob" value={formData.pob || ''} onChange={handleChange} className="mt-1 focus:ring-sky-500 focus:border-sky-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
                     </div>
                     <div>
                         <label htmlFor="dob" className="block text-sm font-medium text-gray-700">Tanggal Lahir</label>
-                        <input type="date" name="dob" id="dob" value={formData.dob || ''} onChange={handleChange} className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                        <input type="date" name="dob" id="dob" value={formData.dob || ''} onChange={handleChange} className="mt-1 focus:ring-sky-500 focus:border-sky-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
                     </div>
                     <div>
                         <label htmlFor="address" className="block text-sm font-medium text-gray-700">Alamat</label>
-                        <textarea name="address" id="address" value={formData.address || ''} onChange={handleChange} rows={3} className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
+                        <textarea name="address" id="address" value={formData.address || ''} onChange={handleChange} rows={3} className="mt-1 focus:ring-sky-500 focus:border-sky-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
                     </div>
                     <div>
                         <label htmlFor="classId" className="block text-sm font-medium text-gray-700">Kelas</label>
-                        <select name="classId" id="classId" value={formData.classId} onChange={handleChange} required className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
+                        <select name="classId" id="classId" value={formData.classId} onChange={handleChange} required className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md">
                             <option value="">Pilih Kelas</option>
                             {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                     </div>
                     <div className="flex justify-end space-x-2 pt-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300" disabled={isSaving}>Batal</button>
-                        <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-primary-300" disabled={isSaving}>
+                        <button type="submit" className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:bg-emerald-300" disabled={isSaving}>
                             {isSaving ? 'Menyimpan...' : 'Simpan'}
                         </button>
                     </div>
@@ -491,12 +524,110 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, classes, onSave, o
 
 const DefaultSchoolLogo = () => (
     <svg viewBox="0 0 100 100" className="w-16 h-16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="50" cy="50" r="48" fill="#FFFFFF" stroke="#003366" strokeWidth="4"/>
-        <path d="M50 15L20 35V75L50 95L80 75V35L50 15Z" fill="#FFD700" stroke="#003366" strokeWidth="2"/>
-        <path d="M50 60L25 47.5V72.5L50 85L75 72.5V47.5L50 60Z" fill="#FFFFFF" stroke="#003366" strokeWidth="2"/>
-        <text x="50" y="55" fontFamily="Arial" fontSize="20" fill="#003366" textAnchor="middle" fontWeight="bold">S</text>
+        <circle cx="50" cy="50" r="48" fill="#FFFFFF" stroke="#0ea5e9" strokeWidth="4"/>
+        <path d="M50 15L20 35V75L50 95L80 75V35L50 15Z" fill="#facc15" stroke="#0ea5e9" strokeWidth="2"/>
+        <path d="M50 60L25 47.5V72.5L50 85L75 72.5V47.5L50 60Z" fill="#FFFFFF" stroke="#0ea5e9" strokeWidth="2"/>
+        <text x="50" y="55" fontFamily="Arial" fontSize="20" fill="#0369a1" textAnchor="middle" fontWeight="bold">S</text>
     </svg>
 );
+
+const StudentCard: React.FC<{ student: Student; qrCodeUrl: string; settings: Partial<AppSettings> }> = ({ student, qrCodeUrl, settings }) => {
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return '-';
+        return new Date(dateString + 'T00:00:00').toLocaleDateString('id-ID', {
+            day: 'numeric', month: 'long', year: 'numeric'
+        });
+    };
+    
+    const cardIssueDate = new Date().toLocaleDateString('id-ID', {
+        day: 'numeric', month: 'long', year: 'numeric'
+    });
+
+    const studentPhoto = student.photoUrl || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3C/svg%3E";
+
+    return (
+        <div className="relative w-[500px] h-[315px] bg-white mx-auto overflow-hidden font-sans rounded-xl shadow-lg border border-slate-200 flex flex-col">
+            {/* Background Pattern */}
+            <div 
+                className="absolute inset-0 opacity-50" 
+                style={{
+                    backgroundImage: 'radial-gradient(circle, #cbd5e1 0.5px, transparent 0.5px)',
+                    backgroundSize: '10px 10px',
+                }}
+            ></div>
+
+            {/* Header */}
+            <header className="relative z-10 p-4 flex-shrink-0">
+                <div className="absolute top-0 left-0 -z-10">
+                    <svg width="500" height="150" viewBox="0 0 500 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M-52 62.1146C-28.9221 82.3588 47.9708 123.863 129.5 111.432C211.029 99.001 228.018 -32.4055 352.5 15.2891C476.982 62.9837 537.5 48.4318 537.5 48.4318V-38H-52V62.1146Z" fill="url(#paint0_linear_card_header)"/>
+                        <defs>
+                        <linearGradient id="paint0_linear_card_header" x1="242.75" y1="-38" x2="242.75" y2="111.432" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#38bdf8"/>
+                        <stop offset="1" stopColor="#0ea5e9"/>
+                        </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div className="flex justify-between items-center">
+                    <div className="text-white">
+                        <h1 className="text-sm font-bold tracking-wider">KARTU TANDA PELAJAR</h1>
+                        <p className="text-xl font-black">{settings.schoolName || 'Nama Sekolah'}</p>
+                        {settings.foundationName && <p className="text-xs">{settings.foundationName}</p>}
+                    </div>
+                    <div className="bg-white p-1 rounded-full shadow-md flex-shrink-0">
+                        {settings.logoUrl ? (
+                            <img src={settings.logoUrl} alt="Logo Sekolah" className="w-16 h-16 object-contain" />
+                        ) : (
+                            <DefaultSchoolLogo />
+                        )}
+                    </div>
+                </div>
+            </header>
+
+            {/* Body */}
+            <main className="relative z-10 flex items-center px-4 -mt-4 flex-grow min-h-0">
+                <div className="flex-shrink-0">
+                    <img src={studentPhoto} alt={student.name} className="w-28 h-36 object-cover border-4 border-white bg-slate-200 rounded-lg shadow-md" />
+                </div>
+                <div className="pl-4 flex-grow">
+                    <h2 className="text-2xl font-bold leading-tight tracking-tight text-slate-900">{student.name}</h2>
+                    <p className="text-slate-500 font-medium mb-2">NIS: {student.id}</p>
+                    <div className="grid grid-cols-[max-content,1fr] gap-x-2 gap-y-0.5 text-xs text-slate-700">
+                        <strong className="font-semibold">NISN</strong><span>: {student.nisn || '-'}</span>
+                        <strong className="font-semibold">TTL</strong><span className="truncate">: {`${student.pob || ''}, ${formatDate(student.dob)}`}</span>
+                        <strong className="font-semibold">Alamat</strong><span className="truncate">: {student.address || '-'}</span>
+                    </div>
+                </div>
+            </main>
+
+            {/* Footer */}
+            <footer className="relative z-10 flex items-end justify-between px-4 pb-3 flex-shrink-0">
+                 <div className="flex items-center gap-2">
+                    {qrCodeUrl ? (
+                        <img src={qrCodeUrl} alt="QR Code" className="w-16 h-16 bg-white p-0.5 rounded-md" />
+                     ) : (
+                        <div className="w-16 h-16 bg-slate-200 animate-pulse rounded-md"></div>
+                     )}
+                     <p className="text-[9px] text-slate-500 max-w-[80px]">Berlaku selama menjadi siswa/i aktif.</p>
+                 </div>
+                <div className="text-center text-xs relative w-40">
+                    <p>{settings.schoolCity || 'Kota'}, {cardIssueDate}</p>
+                    <p>Kepala Sekolah,</p>
+                    <div className="h-10 relative flex justify-center items-center">
+                        {settings.stampUrl && (
+                            <img src={settings.stampUrl} alt="Stempel Sekolah" className="absolute inset-0 w-full h-full object-contain opacity-70" />
+                        )}
+                        {settings.signatureUrl && (
+                            <img src={settings.signatureUrl} alt="Tanda Tangan" className="relative z-10 h-10 max-w-full object-contain" />
+                        )}
+                    </div>
+                    <p className="font-bold underline">{settings.headmasterName || 'Nama Kepala Sekolah'}</p>
+                </div>
+            </footer>
+        </div>
+    );
+};
 
 interface MultiQRCodeModalProps {
     students: Student[];
@@ -526,8 +657,8 @@ const MultiQRCodeModal: React.FC<MultiQRCodeModalProps> = ({ students, classMap,
                 if (error && error.code !== 'PGRST116') throw error;
                 if(data) {
                     setSettings({
-                        schoolPhone: data.school_phone,
-                        schoolEmail: data.school_email,
+                        schoolName: data.school_name,
+                        foundationName: data.foundation_name,
                         headmasterName: data.headmaster_name,
                         schoolCity: data.school_city,
                         logoUrl: data.logo_url,
@@ -555,17 +686,6 @@ const MultiQRCodeModal: React.FC<MultiQRCodeModalProps> = ({ students, classMap,
     }, [students]);
 
     const handlePrint = () => window.print();
-
-    const formatDate = (dateString?: string) => {
-        if (!dateString) return '-';
-        return new Date(dateString + 'T00:00:00').toLocaleDateString('id-ID', {
-            day: 'numeric', month: 'long', year: 'numeric'
-        });
-    };
-    
-    const cardIssueDate = new Date().toLocaleDateString('id-ID', {
-        day: 'numeric', month: 'long', year: 'numeric'
-    });
 
     return (
         <>
@@ -606,9 +726,6 @@ const MultiQRCodeModal: React.FC<MultiQRCodeModalProps> = ({ students, classMap,
                     display: none !important;
                   }
                 }
-                .text-shadow-white {
-                    text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
-                }
                 `}
             </style>
             <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-start p-4 overflow-y-auto printable-area-multi">
@@ -617,7 +734,7 @@ const MultiQRCodeModal: React.FC<MultiQRCodeModalProps> = ({ students, classMap,
                         <h3 className="text-lg font-medium">Cetak Kartu Siswa Terpilih ({students.length})</h3>
                         <div className="flex justify-end space-x-2">
                             <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Tutup</button>
-                            <button type="button" onClick={handlePrint} disabled={loading} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-gray-400">
+                            <button type="button" onClick={handlePrint} disabled={loading} className="px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 disabled:bg-gray-400">
                                 {loading ? 'Memuat...' : 'Cetak'}
                             </button>
                         </div>
@@ -628,58 +745,12 @@ const MultiQRCodeModal: React.FC<MultiQRCodeModalProps> = ({ students, classMap,
                          ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {students.map(student => (
-                                    <div key={student.id}
-                                        className="printable-card-multi relative w-[500px] h-[315px] bg-white mx-auto overflow-hidden font-sans border-2 border-gray-300 rounded-lg flex flex-col"
-                                    >
-                                        <div className="absolute top-0 left-0 right-0 h-[80px] bg-gradient-to-b from-blue-400 to-blue-600 rounded-b-full transform scale-x-150"></div>
-                                        <header className="relative z-10 flex items-center p-2 text-white">
-                                            <div className="bg-white p-1 rounded-md shadow-md flex-shrink-0">
-                                                {settings.logoUrl ? <img src={settings.logoUrl} alt="Logo" className="w-16 h-16 object-contain" /> : <DefaultSchoolLogo />}
-                                            </div>
-                                            <div className="ml-2 text-center flex-grow">
-                                                <h1 className="text-2xl font-black text-red-600 text-shadow-white tracking-wide">KARTU TANDA PELAJAR</h1>
-                                                <p className="text-[8px] leading-tight">{`Telp. ${settings.schoolPhone || '-'} | email: ${settings.schoolEmail || '-'}`}</p>
-                                            </div>
-                                        </header>
-                                        <main className="flex-grow flex p-2 text-xs z-10">
-                                            <div className="w-1/3 flex flex-col items-center text-center">
-                                                <img src={student.photoUrl || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3C/svg%3E"} alt={student.name} className="w-24 h-28 object-cover border-2 border-gray-700 bg-gray-200" />
-                                                <div className="flex-grow" />
-                                                <img src={qrCodeUrls.get(student.id) || ''} alt="QR Code" className="w-20 h-20" />
-                                                <p className="text-[8px] font-semibold mt-auto">Berlaku Selama Menjadi Siswa</p>
-                                            </div>
-                                            <div className="w-2/3 pl-2 flex flex-col">
-                                                <div className="grid grid-cols-[max-content,auto] gap-x-2 gap-y-0 leading-tight">
-                                                    <strong>No. Induk</strong><p>: {student.id}</p>
-                                                    <strong>NISN</strong><p>: {student.nisn || '-'}</p>
-                                                    <strong>Nama Siswa</strong><p>: {student.name}</p>
-                                                    <strong>Tempat/Tgl. Lahir</strong><p>: {`${student.pob || ''}, ${formatDate(student.dob)}`}</p>
-                                                    <strong>Alamat</strong><p className="break-words">: {student.address || '-'}</p>
-                                                </div>
-                                                <div className="flex-grow"></div>
-                                                <div className="text-center self-end w-40 relative">
-                                                    <p>{settings.schoolCity || 'Kota'}, {cardIssueDate}</p>
-                                                    <p>Kepala Sekolah,</p>
-                                                    <div className="h-10 flex justify-center items-center">
-                                                        {settings.signatureUrl && (
-                                                            <img 
-                                                                src={settings.signatureUrl} 
-                                                                alt="Tanda Tangan" 
-                                                                className="h-12 max-w-full object-contain"
-                                                            />
-                                                        )}
-                                                    </div>
-                                                    <p className="font-bold underline">{settings.headmasterName || 'Nama Kepala Sekolah'}</p>
-                                                </div>
-                                            </div>
-                                        </main>
-                                        {settings.stampUrl && (
-                                            <img 
-                                                src={settings.stampUrl} 
-                                                alt="Stempel Sekolah" 
-                                                className="absolute left-[120px] bottom-[40px] w-28 h-28 object-contain opacity-75 pointer-events-none"
-                                            />
-                                        )}
+                                    <div key={student.id} className="printable-card-multi">
+                                        <StudentCard 
+                                            student={student} 
+                                            qrCodeUrl={qrCodeUrls.get(student.id) || ''} 
+                                            settings={settings} 
+                                        />
                                     </div>
                                 ))}
                             </div>
@@ -715,8 +786,8 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
             }
             if(data) {
                 setSettings({
-                    schoolPhone: data.school_phone,
-                    schoolEmail: data.school_email,
+                    schoolName: data.school_name,
+                    foundationName: data.foundation_name,
                     headmasterName: data.headmaster_name,
                     schoolCity: data.school_city,
                     logoUrl: data.logo_url,
@@ -729,20 +800,6 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
     }, [student.id]);
 
     const handlePrint = () => window.print();
-    
-    const formatDate = (dateString?: string) => {
-        if (!dateString) return '-';
-        return new Date(dateString + 'T00:00:00').toLocaleDateString('id-ID', {
-            day: 'numeric', month: 'long', year: 'numeric'
-        });
-    };
-    
-    const cardIssueDate = new Date().toLocaleDateString('id-ID', {
-        day: 'numeric', month: 'long', year: 'numeric'
-    });
-
-    const studentPhoto = student.photoUrl || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3C/svg%3E";
-
 
     return (
         <>
@@ -776,87 +833,18 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ student, studentClass, onClos
                     display: none !important;
                   }
                 }
-                .text-shadow-white {
-                    text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
-                }
                 `}
             </style>
             <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 printable-area">
                 <div className="bg-white rounded-lg shadow-xl w-full max-w-lg pb-4">
                     <div className="overflow-x-auto p-4">
-                        <div 
-                            className="printable-card relative w-[500px] h-[315px] bg-white mx-auto overflow-hidden font-sans border-2 border-gray-300 rounded-lg flex flex-col"
-                        >
-                           {/* Header */}
-                            <div className="absolute top-0 left-0 right-0 h-[80px] bg-gradient-to-b from-blue-400 to-blue-600 rounded-b-full transform scale-x-150"></div>
-                            <header className="relative z-10 flex items-center p-2 text-white">
-                                <div className="bg-white p-1 rounded-md shadow-md flex-shrink-0">
-                                    {settings.logoUrl ? (
-                                        <img src={settings.logoUrl} alt="Logo Sekolah" className="w-16 h-16 object-contain" />
-                                    ) : (
-                                        <DefaultSchoolLogo />
-                                    )}
-                                </div>
-                                <div className="ml-2 text-center flex-grow">
-                                    <h1 className="text-2xl font-black text-red-600 text-shadow-white tracking-wide">KARTU TANDA PELAJAR</h1>
-                                    <p className="text-[8px] leading-tight">
-                                        {`Telp. ${settings.schoolPhone || '-'} | email: ${settings.schoolEmail || '-'}`}
-                                    </p>
-                                </div>
-                            </header>
-
-                            {/* Body */}
-                            <main className="flex-grow flex p-2 text-xs z-10">
-                                {/* Left Column */}
-                                <div className="w-1/3 flex flex-col items-center text-center">
-                                    <img src={studentPhoto} alt={student.name} className="w-24 h-28 object-cover border-2 border-gray-700 bg-gray-200" />
-                                     <div className="flex-grow" />
-                                     {qrCodeUrl ? (
-                                        <img src={qrCodeUrl} alt="QR Code" className="w-20 h-20" />
-                                     ) : (
-                                        <div className="w-20 h-20 bg-gray-200 animate-pulse"></div>
-                                     )}
-                                    <p className="text-[8px] font-semibold mt-auto">Berlaku Selama Menjadi Siswa</p>
-                                </div>
-                                {/* Right Column */}
-                                <div className="w-2/3 pl-2 flex flex-col">
-                                    <div className="grid grid-cols-[max-content,auto] gap-x-2 gap-y-0 leading-tight">
-                                        <strong>No. Induk</strong><p>: {student.id}</p>
-                                        <strong>NISN</strong><p>: {student.nisn || '-'}</p>
-                                        <strong>Nama Siswa</strong><p>: {student.name}</p>
-                                        <strong>Tempat/Tgl. Lahir</strong><p>: {`${student.pob || ''}, ${formatDate(student.dob)}`}</p>
-                                        <strong>Alamat</strong><p className="break-words">: {student.address || '-'}</p>
-                                    </div>
-                                    <div className="flex-grow"></div>
-                                    <div className="text-center self-end w-40 relative">
-                                        <p>{settings.schoolCity || 'Kota'}, {cardIssueDate}</p>
-                                        <p>Kepala Sekolah,</p>
-                                        <div className="h-10 flex justify-center items-center">
-                                            {settings.signatureUrl && (
-                                                <img 
-                                                    src={settings.signatureUrl} 
-                                                    alt="Tanda Tangan" 
-                                                    className="h-12 max-w-full object-contain"
-                                                />
-                                            )}
-                                        </div>
-                                        <p className="font-bold underline">{settings.headmasterName || 'Nama Kepala Sekolah'}</p>
-                                    </div>
-                                </div>
-                            </main>
-                             {/* Stamp Overlay */}
-                            {settings.stampUrl && (
-                                <img 
-                                    src={settings.stampUrl} 
-                                    alt="Stempel Sekolah" 
-                                    className="absolute left-[120px] bottom-[40px] w-28 h-28 object-contain opacity-75 pointer-events-none"
-                                />
-                            )}
+                        <div className="printable-card">
+                           <StudentCard student={student} qrCodeUrl={qrCodeUrl} settings={settings} />
                         </div>
                     </div>
                     <div className="flex justify-end space-x-2 px-4 no-print">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Tutup</button>
-                        <button type="button" onClick={handlePrint} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Cetak</button>
+                        <button type="button" onClick={handlePrint} className="px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700">Cetak</button>
                     </div>
                 </div>
             </div>
