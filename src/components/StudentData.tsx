@@ -392,15 +392,14 @@ const StudentData: React.FC = () => {
                                                     <button onClick={() => handleDelete(student.id)} title="Hapus Siswa" className="p-2 text-red-600 hover:bg-red-100 rounded-md transition-colors">
                                                         <TrashIcon className="h-4 w-4" />
                                                     </button>
-                                                    
                                                 </>
                                             )}
-                                            <button onClick={() => setQrStudent(student)} title="Cetak Kartu Siswa" className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-md transition-colors">
-                                                <IdCardIcon className="h-3 w-3" />
-                                            </button>
                                             <button onClick={() => handleDownloadQR(student)} title="Unduh QR Code" className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-md transition-colors">
-                                                        <DownloadIcon className="h-3 w-3" />
-                                                    </button>
+                                                <DownloadIcon className="h-4 w-4" />
+                                            </button>
+                                            <button onClick={() => setQrStudent(student)} title="Cetak Kartu Siswa" className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-md transition-colors">
+                                                <IdCardIcon className="h-4 w-4" />
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
