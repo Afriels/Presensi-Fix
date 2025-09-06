@@ -7,6 +7,13 @@ import { useAuth } from './auth/Auth';
 // FIX: Corrected the import path to point to the constants file within the src directory.
 import { PencilIcon, TrashIcon, DownloadIcon, IdCardIcon } from '../constants';
 
+// Helper component for consistent action button styling
+const ActionButton: React.FC<{ onClick: () => void; title: string; className: string; children: React.ReactNode }> = ({ onClick, title, className, children }) => (
+    <button onClick={onClick} title={title} className={`p-2 rounded-md transition-colors ${className}`}>
+        {children}
+    </button>
+);
+
 const StudentData: React.FC = () => {
     const { user } = useAuth();
     const [students, setStudents] = useState<Student[]>([]);
@@ -386,20 +393,20 @@ const StudentData: React.FC = () => {
                                         <div className="flex justify-end items-center gap-1">
                                             {user?.role === 'admin' && (
                                                 <>
-                                                    <button onClick={() => openModal(student)} title="Edit Siswa" className="p-2 text-sky-600 hover:bg-sky-100 rounded-md transition-colors">
+                                                    <ActionButton onClick={() => openModal(student)} title="Edit Siswa" className="text-sky-600 hover:bg-sky-100">
                                                         <PencilIcon className="h-4 w-4" />
-                                                    </button>
-                                                    <button onClick={() => handleDelete(student.id)} title="Hapus Siswa" className="p-2 text-red-600 hover:bg-red-100 rounded-md transition-colors">
+                                                    </ActionButton>
+                                                    <ActionButton onClick={() => handleDelete(student.id)} title="Hapus Siswa" className="text-red-600 hover:bg-red-100">
                                                         <TrashIcon className="h-4 w-4" />
-                                                    </button>
+                                                    </ActionButton>
                                                 </>
                                             )}
-                                            <button onClick={() => handleDownloadQR(student)} title="Unduh QR Code" className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-md transition-colors">
+                                            <ActionButton onClick={() => handleDownloadQR(student)} title="Unduh QR Code" className="text-indigo-600 hover:bg-indigo-100">
                                                 <DownloadIcon className="h-4 w-4" />
-                                            </button>
-                                            <button onClick={() => setQrStudent(student)} title="Cetak Kartu Siswa" className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-md transition-colors">
+                                            </ActionButton>
+                                            <ActionButton onClick={() => setQrStudent(student)} title="Cetak Kartu Siswa" className="text-emerald-600 hover:bg-emerald-100">
                                                 <IdCardIcon className="h-4 w-4" />
-                                            </button>
+                                            </ActionButton>
                                         </div>
                                     </td>
                                 </tr>
