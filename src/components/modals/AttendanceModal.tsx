@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { AttendanceRecord, Student, AttendanceStatus } from '../../types';
 

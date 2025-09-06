@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { supabase, Enums, Tables } from '../../services/supabase';
 import type { Session, User } from '@supabase/supabase-js';

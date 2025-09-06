@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Student, AttendanceRecord, AttendanceStatus } from '../types';
 import Card, { CardHeader, CardTitle } from './ui/Card';

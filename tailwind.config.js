@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 import defaultTheme from 'tailwindcss/defaultTheme';
+import colors from 'tailwindcss/colors';
 
 export default {
   content: [
@@ -8,11 +9,12 @@ export default {
   ],
   theme: {
     extend: {
+      colors: {
+        primary: colors.sky,
+      },
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],
       },
-      // The 'colors' key is removed to rely on Tailwind's default palette,
-      // enabling the use of 'sky' and 'emerald' colors.
       keyframes: {
         'fade-in': {
             '0%': { opacity: '0', transform: 'translateY(10px)' },

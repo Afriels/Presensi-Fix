@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { AppSettings, Class, AcademicYear } from '../types';
 import Card from './ui/Card';

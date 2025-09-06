@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Student, AttendanceStatus, AppSettings, Class } from '../types';
 import { getTodayDateString, getCurrentTimeString } from '../services/dataService';
