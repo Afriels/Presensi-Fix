@@ -396,10 +396,10 @@ const StudentData: React.FC = () => {
                                                 </>
                                             )}
                                             <button onClick={() => setQrStudent(student)} title="Cetak Kartu Siswa" className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-md transition-colors">
-                                                <IdCardIcon className="h-4 w-4" />
+                                                <IdCardIcon className="h-3 w-3" />
                                             </button>
                                             <button onClick={() => handleDownloadQR(student)} title="Unduh QR Code" className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-md transition-colors">
-                                                        <DownloadIcon className="h-4 w-4" />
+                                                        <DownloadIcon className="h-3 w-3" />
                                                     </button>
                                         </div>
                                     </td>
